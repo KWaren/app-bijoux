@@ -4,8 +4,10 @@ import 'package:sqflite/sqflite.dart';
 import '../models/arrivage.dart';
 import '../models/depense.dart';
 import '../models/dette.dart';
+import '../models/modele_vendu.dart';
 import '../models/resume.dart';
 import '../models/vente.dart';
+import '../utils/date_ranges.dart';
 
 class DbHelper {
   DbHelper._();
@@ -25,7 +27,7 @@ class DbHelper {
     final path = join(dbPath, dbFileName);
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE arrivages (
@@ -37,6 +39,7 @@ class DbHelper {
             qte_endommage INTEGER NOT NULL DEFAULT 0,
             prix_vente_max REAL,
             prix_vente_last REAL,
+            prix_vente_min REAL,
             photo_path TEXT,
             date_ajout TEXT NOT NULL
           )
@@ -78,6 +81,11 @@ class DbHelper {
         await db.execute('CREATE INDEX idx_arrivages_mois ON arrivages(mois)');
         await db.execute('CREATE INDEX idx_depenses_mois ON depenses(mois)');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE arrivages ADD COLUMN prix_vente_min REAL');
+        }
+      },
     );
   }
 
@@ -97,6 +105,10 @@ class DbHelper {
 
   Future<void> deleteArrivage(int id) async {
     final db = await database;
+    final ventes = await db.query('ventes', columns: ['id'], where: 'arrivage_id = ?', whereArgs: [id]);
+    for (final v in ventes) {
+      await db.delete('dettes', where: 'vente_id = ?', whereArgs: [v['id']]);
+    }
     await db.delete('ventes', where: 'arrivage_id = ?', whereArgs: [id]);
     await db.delete('arrivages', where: 'id = ?', whereArgs: [id]);
   }
@@ -211,18 +223,6 @@ class DbHelper {
     return rows.map(Vente.fromMap).toList();
   }
 
-  Future<List<Vente>> getVentesByClient(String client) async {
-    final db = await database;
-    final rows = await db.rawQuery('''
-      SELECT v.*, a.modele as modele, a.photo_path as photo_path
-      FROM ventes v
-      JOIN arrivages a ON a.id = v.arrivage_id
-      WHERE v.client_nom = ?
-      ORDER BY v.date_vente DESC, v.id DESC
-    ''', [client]);
-    return rows.map(Vente.fromMap).toList();
-  }
-
   // ---------------------------------------------------------------------
   // Dépenses
   // ---------------------------------------------------------------------
@@ -273,12 +273,6 @@ class DbHelper {
     await db.delete('dettes', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<List<Dette>> getDettesByClient(String client) async {
-    final db = await database;
-    final rows = await db.query('dettes', where: 'client_nom = ?', whereArgs: [client], orderBy: 'date_dette DESC');
-    return rows.map(Dette.fromMap).toList();
-  }
-
   Future<List<Dette>> getDettesEnCours() async {
     final db = await database;
     final rows = await db.query('dettes', where: "statut = 'en_cours'", orderBy: 'date_dette DESC');
@@ -301,32 +295,13 @@ class DbHelper {
   }
 
   // ---------------------------------------------------------------------
-  // Clients
+  // Clients (autocomplétion à la saisie uniquement — pas de suivi par client)
   // ---------------------------------------------------------------------
 
   Future<List<String>> getClientsDistincts() async {
     final db = await database;
     final rows = await db.rawQuery('SELECT DISTINCT client_nom FROM ventes ORDER BY client_nom ASC');
     return rows.map((r) => r['client_nom'] as String).toList();
-  }
-
-  Future<List<Map<String, dynamic>>> getClientsResume() async {
-    final db = await database;
-    final rows = await db.rawQuery('''
-      SELECT
-        v.client_nom as client_nom,
-        COUNT(*) as nb_ventes,
-        SUM(v.prix_vente_total) as total_achats,
-        MAX(v.date_vente) as dernier_achat,
-        COALESCE((
-          SELECT SUM(d.montant) FROM dettes d
-          WHERE d.client_nom = v.client_nom AND d.statut = 'en_cours'
-        ), 0) as dettes_en_cours
-      FROM ventes v
-      GROUP BY v.client_nom
-      ORDER BY total_achats DESC
-    ''');
-    return rows;
   }
 
   // ---------------------------------------------------------------------
@@ -366,6 +341,37 @@ class DbHelper {
       nbVentes: (ventesRows.first['nb'] as num).toInt(),
       dettesCreees: dettesCreees,
     );
+  }
+
+  /// Modèles les plus vendus sur la période, classés par quantité vendue.
+  Future<List<ModeleVendu>> getTopModeles(DateTime debut, DateTime fin, {int limit = 5}) async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT a.modele as modele, SUM(v.qte_vendue) as qte, SUM(v.prix_vente_total) as ca
+      FROM ventes v
+      JOIN arrivages a ON a.id = v.arrivage_id
+      WHERE v.date_vente BETWEEN ? AND ?
+      GROUP BY a.modele
+      ORDER BY qte DESC
+      LIMIT ?
+    ''', [_fmt(debut), _fmt(fin), limit]);
+    return rows.map(ModeleVendu.fromMap).toList();
+  }
+
+  /// Résumés des [nombreMois] derniers mois, du plus ancien au plus récent,
+  /// [moisFin] inclus (format 'YYYY-MM'). Utilisé pour le graphique d'évolution.
+  Future<List<ResumePeriode>> getResumeDerniersMois(String moisFin, int nombreMois) async {
+    final parts = moisFin.split('-');
+    final anneeFin = int.parse(parts[0]);
+    final moisFinNum = int.parse(parts[1]);
+    final resumes = <ResumePeriode>[];
+    for (var i = nombreMois - 1; i >= 0; i--) {
+      final date = DateTime(anneeFin, moisFinNum - i, 1);
+      final mois = '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}';
+      final periode = rangeMois(mois);
+      resumes.add(await getResume(periode.debut, periode.fin));
+    }
+    return resumes;
   }
 
   String _fmt(DateTime d) {

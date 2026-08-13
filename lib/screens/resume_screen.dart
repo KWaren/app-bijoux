@@ -27,11 +27,15 @@ class _ResumeScreenState extends State<ResumeScreen> {
   Future<List<Dette>>? _futureDettes;
   Periode? _periodeActuelle;
   bool _export = false;
+  String? _moisVu;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _recharger();
+    final mois = context.watch<AppState>().moisSelectionne;
+    final doitRecharger = _futureResume == null || (_type == _TypePeriode.mois && mois != _moisVu);
+    _moisVu = mois;
+    if (doitRecharger) _recharger();
   }
 
   Periode _calculerPeriode() {
@@ -75,6 +79,53 @@ class _ResumeScreenState extends State<ResumeScreen> {
     } finally {
       if (mounted) setState(() => _export = false);
     }
+  }
+
+  Future<void> _ajouterDette() async {
+    final clientCtrl = TextEditingController();
+    final montantCtrl = TextEditingController();
+    final descriptionCtrl = TextEditingController();
+    final ajoute = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ajouter une dette'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: clientCtrl,
+              decoration: const InputDecoration(labelText: 'Nom du client'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: montantCtrl,
+              decoration: InputDecoration(labelText: 'Montant ($devise)'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionCtrl,
+              decoration: const InputDecoration(labelText: 'Description (optionnel)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Ajouter')),
+        ],
+      ),
+    );
+    if (ajoute != true) return;
+    final client = clientCtrl.text.trim();
+    final montant = double.tryParse(montantCtrl.text.replaceAll(',', '.'));
+    if (client.isEmpty || montant == null) return;
+    await DbHelper.instance.insertDette(Dette(
+      clientNom: client,
+      montant: montant,
+      description: descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
+      dateDette: dateDuJourIso(),
+    ));
+    _recharger();
   }
 
   @override
@@ -145,7 +196,17 @@ class _ResumeScreenState extends State<ResumeScreen> {
               label: Text(_export ? 'Génération...' : 'Exporter en Excel'),
             ),
             const SizedBox(height: 24),
-            Text('Dettes en cours', style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Dettes en cours', style: Theme.of(context).textTheme.titleMedium),
+                TextButton.icon(
+                  onPressed: _ajouterDette,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Ajouter'),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             FutureBuilder<List<Dette>>(
               future: _futureDettes,
@@ -210,7 +271,9 @@ class _ResumeDetail extends StatelessWidget {
             const Divider(),
             _Ligne(
               label: 'Bénéfice',
-              valeur: formatMontant(resume.benefice),
+              valeur: resume.margeEnPourcent != null
+                  ? '${formatMontant(resume.benefice)} (${resume.margeEnPourcent!.toStringAsFixed(1)} %)'
+                  : formatMontant(resume.benefice),
               gras: true,
               couleur: resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
             ),

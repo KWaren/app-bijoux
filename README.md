@@ -4,11 +4,11 @@ Application mobile de gestion pour un petit business de bijoux : stock, ventes, 
 
 ## Fonctionnalités
 
-- **Stock / Arrivage** par mois : modèle, quantité, prix d'achat unitaire, quantité endommagée, prix de vente max/dernier, photo du modèle
-- **Ventes** : choix du modèle → client → date → prix → quantité, avec calcul automatique du stock restant
+- **Stock / Arrivage** par mois : modèle, quantité achetée, prix total payé pour le lot (prix de gros) → prix unitaire de détail calculé automatiquement, quantité endommagée, prix de vente max/dernier, photo du modèle
+- **Ventes** : choix du modèle → nom du client → date → prix → quantité, avec calcul automatique du stock restant. Le nom du client est enregistré à chaque vente mais il n'y a pas de fiche/historique par client (pas de module Clients séparé)
 - **Autres dépenses** : transport, sachets, frais de retrait...
-- **Résumé automatique** (jour / semaine / mois) : total des achats, total des ventes, dépenses & pertes, bénéfice
-- **Clients** : historique d'achats par client, suivi des dettes et paiements partiels
+- **Résumé automatique** (jour / semaine / mois) : total des achats, total des ventes, dépenses & pertes, bénéfice (+ marge en %), dettes en cours (ajout et suivi centralisés dans cet écran)
+- **Tableau de bord enrichi** : marge en %, bénéfice minimum garanti sur le stock restant (basé sur un prix de vente minimum fixé par modèle, masqué comme le prix d'achat), modèles les plus vendus, évolution des ventes/bénéfices sur 6 mois
 - **Export Excel** du rapport de la période sélectionnée, partageable directement (WhatsApp, mail, Drive...)
 - **Sauvegarde locale automatique** de la base de données à chaque lancement
 - **Prix d'achat masqué par défaut**, pour ne jamais l'afficher par erreur devant un·e client·e

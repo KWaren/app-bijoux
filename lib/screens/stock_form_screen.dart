@@ -24,10 +24,11 @@ class _StockFormScreenState extends State<StockFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _modeleCtrl;
   late TextEditingController _quantiteCtrl;
-  late TextEditingController _prixAchatCtrl;
+  late TextEditingController _prixAchatTotalCtrl;
   late TextEditingController _qteEndommageCtrl;
   late TextEditingController _prixVenteMaxCtrl;
   late TextEditingController _prixVenteLastCtrl;
+  late TextEditingController _prixVenteMinCtrl;
   late DateTime _dateAjout;
   String? _photoPath;
   bool _enregistrement = false;
@@ -40,13 +41,31 @@ class _StockFormScreenState extends State<StockFormScreen> {
     final a = widget.arrivage;
     _modeleCtrl = TextEditingController(text: a?.modele ?? '');
     _quantiteCtrl = TextEditingController(text: a != null ? a.quantite.toString() : '');
-    _prixAchatCtrl = TextEditingController(text: a != null ? a.prixAchatUnitaire.toString() : '');
+    _prixAchatTotalCtrl = TextEditingController(text: a != null ? _formatNombre(a.prixAchatTotal) : '');
     _qteEndommageCtrl = TextEditingController(text: a != null ? a.qteEndommage.toString() : '0');
     _prixVenteMaxCtrl = TextEditingController(text: a?.prixVenteMax?.toString() ?? '');
     _prixVenteLastCtrl = TextEditingController(text: a?.prixVenteLast?.toString() ?? '');
+    _prixVenteMinCtrl = TextEditingController(text: a?.prixVenteMin?.toString() ?? '');
     _dateAjout = a != null ? DateTime.parse(a.dateAjout) : _premierJourUtileDuMois(widget.mois);
     _photoPath = a?.photoPath;
+    _quantiteCtrl.addListener(_recalculerPrixUnitaire);
+    _prixAchatTotalCtrl.addListener(_recalculerPrixUnitaire);
   }
+
+  /// Affiche un nombre sans décimales inutiles (ex: 15000 plutôt que 15000.0).
+  String _formatNombre(double valeur) {
+    if (valeur == valeur.roundToDouble()) return valeur.toStringAsFixed(0);
+    return valeur.toStringAsFixed(2);
+  }
+
+  double? get _prixUnitaireCalcule {
+    final quantite = int.tryParse(_quantiteCtrl.text);
+    final total = double.tryParse(_prixAchatTotalCtrl.text.replaceAll(',', '.'));
+    if (quantite == null || quantite <= 0 || total == null) return null;
+    return total / quantite;
+  }
+
+  void _recalculerPrixUnitaire() => setState(() {});
 
   DateTime _premierJourUtileDuMois(String moisYYYYMM) {
     final parts = moisYYYYMM.split('-');
@@ -61,10 +80,11 @@ class _StockFormScreenState extends State<StockFormScreen> {
   void dispose() {
     _modeleCtrl.dispose();
     _quantiteCtrl.dispose();
-    _prixAchatCtrl.dispose();
+    _prixAchatTotalCtrl.dispose();
     _qteEndommageCtrl.dispose();
     _prixVenteMaxCtrl.dispose();
     _prixVenteLastCtrl.dispose();
+    _prixVenteMinCtrl.dispose();
     super.dispose();
   }
 
@@ -117,12 +137,14 @@ class _StockFormScreenState extends State<StockFormScreen> {
     setState(() => _enregistrement = true);
     final mois = '${_dateAjout.year.toString().padLeft(4, '0')}-${_dateAjout.month.toString().padLeft(2, '0')}';
     final dateIso = '$mois-${_dateAjout.day.toString().padLeft(2, '0')}';
+    final quantite = int.parse(_quantiteCtrl.text);
+    final prixAchatTotal = double.parse(_prixAchatTotalCtrl.text.replaceAll(',', '.'));
     final arrivage = Arrivage(
       id: widget.arrivage?.id,
       mois: mois,
       modele: _modeleCtrl.text.trim(),
-      quantite: int.parse(_quantiteCtrl.text),
-      prixAchatUnitaire: double.parse(_prixAchatCtrl.text.replaceAll(',', '.')),
+      quantite: quantite,
+      prixAchatUnitaire: prixAchatTotal / quantite,
       qteEndommage: int.tryParse(_qteEndommageCtrl.text) ?? 0,
       prixVenteMax: _prixVenteMaxCtrl.text.trim().isEmpty
           ? null
@@ -130,6 +152,9 @@ class _StockFormScreenState extends State<StockFormScreen> {
       prixVenteLast: _prixVenteLastCtrl.text.trim().isEmpty
           ? null
           : double.parse(_prixVenteLastCtrl.text.replaceAll(',', '.')),
+      prixVenteMin: _prixVenteMinCtrl.text.trim().isEmpty
+          ? null
+          : double.parse(_prixVenteMinCtrl.text.replaceAll(',', '.')),
       photoPath: _photoPath,
       dateAjout: dateIso,
     );
@@ -211,21 +236,44 @@ class _StockFormScreenState extends State<StockFormScreen> {
               controller: _quantiteCtrl,
               decoration: const InputDecoration(labelText: 'Quantité achetée'),
               keyboardType: TextInputType.number,
-              validator: (v) => (int.tryParse(v ?? '') == null) ? 'Nombre invalide' : null,
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null || n <= 0) return 'Nombre invalide';
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _prixAchatCtrl,
-              decoration: InputDecoration(labelText: "Prix unitaire d'achat ($devise)"),
+              controller: _prixAchatTotalCtrl,
+              decoration: InputDecoration(labelText: "Prix total payé pour le lot — prix de gros ($devise)"),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) =>
                   (double.tryParse((v ?? '').replaceAll(',', '.')) == null) ? 'Montant invalide' : null,
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                _prixUnitaireCalcule != null
+                    ? 'Prix unitaire (détail) calculé : ${formatMontant(_prixUnitaireCalcule!)} / pièce'
+                    : 'Prix unitaire (détail) calculé : —',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _qteEndommageCtrl,
               decoration: const InputDecoration(labelText: 'Quantité endommagée'),
               keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _prixVenteMinCtrl,
+              decoration: InputDecoration(
+                labelText: 'Prix de vente minimum ($devise) — optionnel',
+                helperText: 'Sert à estimer le bénéfice minimum garanti sur ce modèle',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
             const SizedBox(height: 12),
             TextFormField(

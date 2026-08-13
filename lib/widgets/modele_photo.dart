@@ -11,6 +11,7 @@ class ModelePhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final path = photoPath;
+    final colorScheme = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: (path != null && File(path).existsSync())
@@ -18,8 +19,8 @@ class ModelePhoto extends StatelessWidget {
           : Container(
               width: taille,
               height: taille,
-              color: const Color(0xFFE3D5B8),
-              child: Icon(Icons.diamond_outlined, size: taille * 0.5, color: const Color(0xFF9C7A1E)),
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              child: Icon(Icons.diamond_outlined, size: taille * 0.5, color: colorScheme.primary),
             ),
     );
   }

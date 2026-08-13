@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../database/db_helper.dart';
+import '../models/modele_vendu.dart';
 import '../models/resume.dart';
 import '../state/app_state.dart';
 import '../utils/date_ranges.dart';
 import '../utils/formatters.dart';
+import '../widgets/evolution_mensuelle_chart.dart';
 import '../widgets/month_selector.dart';
+import '../widgets/price_hidden_widget.dart';
 import 'depenses_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,8 +38,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final resume = await DbHelper.instance.getResume(periode.debut, periode.fin);
     final enStock = await DbHelper.instance.getArrivagesEnStock();
     final nbStockBas = enStock.where((a) => a.stockBas || a.stockEpuise).length;
+    final beneficePotentielRestant = enStock
+        .where((a) => a.beneficeEstime != null)
+        .fold<double>(0, (total, a) => total + a.beneficeEstime!);
     final dettes = await DbHelper.instance.getTotalDettesEnCours();
-    return _HomeData(resume: resume, nbStockBas: nbStockBas, dettesEnCours: dettes);
+    final topModeles = await DbHelper.instance.getTopModeles(periode.debut, periode.fin);
+    final evolution = await DbHelper.instance.getResumeDerniersMois(mois, 6);
+    return _HomeData(
+      resume: resume,
+      nbStockBas: nbStockBas,
+      dettesEnCours: dettes,
+      beneficePotentielRestant: beneficePotentielRestant,
+      topModeles: topModeles,
+      evolution: evolution,
+    );
   }
 
   void _recharger() {
@@ -65,15 +80,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
-                return _ResumeCards(data: snapshot.data!);
+                final data = snapshot.data!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ResumeCards(data: data),
+                    const SizedBox(height: 24),
+                    Text('Modèles les plus vendus', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    _TopModeles(topModeles: data.topModeles),
+                    const SizedBox(height: 24),
+                    Text('Évolution sur 6 mois', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: EvolutionMensuelleChart(resumes: data.evolution),
+                      ),
+                    ),
+                  ],
+                );
               },
             ),
             const SizedBox(height: 24),
             Text('Accès rapide', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            ActionChip(
-              avatar: const Icon(Icons.receipt_long, size: 18),
-              label: const Text('Autres dépenses'),
+            FilledButton.icon(
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Ajouter une dépense annexe'),
               onPressed: () async {
                 await Navigator.push(context, MaterialPageRoute(builder: (_) => const DepensesScreen()));
                 _recharger();
@@ -90,8 +124,18 @@ class _HomeData {
   final ResumePeriode resume;
   final int nbStockBas;
   final double dettesEnCours;
+  final double beneficePotentielRestant;
+  final List<ModeleVendu> topModeles;
+  final List<ResumePeriode> evolution;
 
-  _HomeData({required this.resume, required this.nbStockBas, required this.dettesEnCours});
+  _HomeData({
+    required this.resume,
+    required this.nbStockBas,
+    required this.dettesEnCours,
+    required this.beneficePotentielRestant,
+    required this.topModeles,
+    required this.evolution,
+  });
 }
 
 class _ResumeCards extends StatelessWidget {
@@ -115,7 +159,9 @@ class _ResumeCards extends StatelessWidget {
         ),
         _StatCard(
           label: 'Bénéfice du mois',
-          valeur: formatMontant(data.resume.benefice),
+          valeur: data.resume.margeEnPourcent != null
+              ? '${formatMontant(data.resume.benefice)}\n(${data.resume.margeEnPourcent!.toStringAsFixed(1)} %)'
+              : formatMontant(data.resume.benefice),
           icone: Icons.trending_up,
           couleur: data.resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
         ),
@@ -130,6 +176,11 @@ class _ResumeCards extends StatelessWidget {
           valeur: formatMontant(data.dettesEnCours),
           icone: Icons.receipt_long,
         ),
+        _StatCard(
+          label: 'Bénéfice min. garanti sur le stock restant',
+          icone: Icons.savings_outlined,
+          valeurMasquee: data.beneficePotentielRestant,
+        ),
       ],
     );
   }
@@ -137,11 +188,18 @@ class _ResumeCards extends StatelessWidget {
 
 class _StatCard extends StatelessWidget {
   final String label;
-  final String valeur;
+  final String? valeur;
+  final double? valeurMasquee;
   final IconData icone;
   final Color? couleur;
 
-  const _StatCard({required this.label, required this.valeur, required this.icone, this.couleur});
+  const _StatCard({
+    required this.label,
+    this.valeur,
+    this.valeurMasquee,
+    required this.icone,
+    this.couleur,
+  }) : assert(valeur != null || valeurMasquee != null);
 
   @override
   Widget build(BuildContext context) {
@@ -154,10 +212,47 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icone, color: couleur),
             const SizedBox(height: 6),
-            Text(valeur, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: couleur)),
+            if (valeurMasquee != null)
+              PrixAchatText(
+                valeur: valeurMasquee!,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: couleur),
+              )
+            else
+              Text(valeur!, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: couleur)),
             Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TopModeles extends StatelessWidget {
+  final List<ModeleVendu> topModeles;
+  const _TopModeles({required this.topModeles});
+
+  @override
+  Widget build(BuildContext context) {
+    if (topModeles.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Aucune vente sur cette période.'),
+        ),
+      );
+    }
+    return Card(
+      child: Column(
+        children: topModeles.asMap().entries.map((entry) {
+          final rang = entry.key + 1;
+          final m = entry.value;
+          return ListTile(
+            leading: CircleAvatar(child: Text('$rang')),
+            title: Text(m.modele),
+            subtitle: Text('${m.qteVendue} vendu(s)'),
+            trailing: Text(formatMontant(m.totalVentes), style: const TextStyle(fontWeight: FontWeight.bold)),
+          );
+        }).toList(),
       ),
     );
   }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'database/backup_service.dart';
-import 'screens/clients_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/resume_screen.dart';
 import 'screens/stock_screen.dart';
@@ -47,7 +46,6 @@ class _RootShellState extends State<RootShell> {
     StockScreen(),
     VenteScreen(),
     ResumeScreen(),
-    ClientsScreen(),
   ];
 
   @override
@@ -81,7 +79,6 @@ class _RootShellState extends State<RootShell> {
             selectedIcon: Icon(Icons.bar_chart),
             label: 'Résumé',
           ),
-          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Clients'),
         ],
       ),
     );

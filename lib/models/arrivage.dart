@@ -7,6 +7,7 @@ class Arrivage {
   final int qteEndommage;
   final double? prixVenteMax;
   final double? prixVenteLast;
+  final double? prixVenteMin;
   final String? photoPath;
   final String dateAjout; // ISO 'YYYY-MM-DD'
 
@@ -23,6 +24,7 @@ class Arrivage {
     this.qteEndommage = 0,
     this.prixVenteMax,
     this.prixVenteLast,
+    this.prixVenteMin,
     this.photoPath,
     required this.dateAjout,
     this.qteVendue = 0,
@@ -34,6 +36,13 @@ class Arrivage {
   bool get stockEpuise => bijouxRestant <= 0;
   bool get stockBas => !stockEpuise && bijouxRestant <= 2;
 
+  /// Bénéfice minimum garanti sur le stock restant si tout est vendu au prix
+  /// de vente minimum fixé. `null` tant qu'aucun prix minimum n'est renseigné.
+  double? get beneficeEstime {
+    if (prixVenteMin == null) return null;
+    return bijouxRestant * (prixVenteMin! - prixAchatUnitaire);
+  }
+
   Arrivage copyWith({
     int? id,
     String? mois,
@@ -43,6 +52,7 @@ class Arrivage {
     int? qteEndommage,
     double? prixVenteMax,
     double? prixVenteLast,
+    double? prixVenteMin,
     String? photoPath,
     String? dateAjout,
     int? qteVendue,
@@ -56,6 +66,7 @@ class Arrivage {
       qteEndommage: qteEndommage ?? this.qteEndommage,
       prixVenteMax: prixVenteMax ?? this.prixVenteMax,
       prixVenteLast: prixVenteLast ?? this.prixVenteLast,
+      prixVenteMin: prixVenteMin ?? this.prixVenteMin,
       photoPath: photoPath ?? this.photoPath,
       dateAjout: dateAjout ?? this.dateAjout,
       qteVendue: qteVendue ?? this.qteVendue,
@@ -72,6 +83,7 @@ class Arrivage {
       qteEndommage: map['qte_endommage'] as int? ?? 0,
       prixVenteMax: (map['prix_vente_max'] as num?)?.toDouble(),
       prixVenteLast: (map['prix_vente_last'] as num?)?.toDouble(),
+      prixVenteMin: (map['prix_vente_min'] as num?)?.toDouble(),
       photoPath: map['photo_path'] as String?,
       dateAjout: map['date_ajout'] as String,
       qteVendue: (map['qte_vendue'] as num?)?.toInt() ?? 0,
@@ -88,6 +100,7 @@ class Arrivage {
       'qte_endommage': qteEndommage,
       'prix_vente_max': prixVenteMax,
       'prix_vente_last': prixVenteLast,
+      'prix_vente_min': prixVenteMin,
       'photo_path': photoPath,
       'date_ajout': dateAjout,
     };

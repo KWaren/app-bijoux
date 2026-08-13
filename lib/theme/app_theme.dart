@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color or = Color(0xFFC9A227);
-  static const Color orFonce = Color(0xFF9C7A1E);
-  static const Color beige = Color(0xFFF3EAD8);
-  static const Color beigeFonce = Color(0xFFE3D5B8);
-  static const Color noir = Color(0xFF1B1B1B);
-  static const Color rougeAlerte = Color(0xFFB3261E);
+  static const Color bleuMarine = Color(0xFF1E3A5F);
+  static const Color bleuMarineFonce = Color(0xFF142A45);
+  static const Color grisClair = Color(0xFFF5F6F8);
+  static const Color grisMoyen = Color(0xFFE3E6EB);
+  static const Color anthracite = Color(0xFF1B1B1B);
+  static const Color rougeAlerte = Color(0xFFC0392B);
+  static const Color vertSucces = Color(0xFF2E7D32);
 
   static ThemeData get theme {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: or,
+      seedColor: bleuMarine,
       brightness: Brightness.light,
     ).copyWith(
-      primary: or,
-      secondary: orFonce,
+      primary: bleuMarine,
+      secondary: bleuMarineFonce,
       surface: Colors.white,
       error: rougeAlerte,
     );
@@ -22,10 +23,10 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: beige,
+      scaffoldBackgroundColor: grisClair,
       appBarTheme: const AppBarTheme(
-        backgroundColor: noir,
-        foregroundColor: beige,
+        backgroundColor: bleuMarine,
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
       ),
@@ -36,12 +37,12 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: or,
-        foregroundColor: noir,
+        backgroundColor: bleuMarine,
+        foregroundColor: Colors.white,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: beigeFonce,
+        indicatorColor: grisMoyen,
         elevation: 3,
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -52,16 +53,16 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: or,
-          foregroundColor: noir,
+          backgroundColor: bleuMarine,
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
       textTheme: const TextTheme(
-        titleLarge: TextStyle(fontWeight: FontWeight.bold, color: noir),
-        titleMedium: TextStyle(fontWeight: FontWeight.w600, color: noir),
+        titleLarge: TextStyle(fontWeight: FontWeight.bold, color: anthracite),
+        titleMedium: TextStyle(fontWeight: FontWeight.w600, color: anthracite),
       ),
     );
   }

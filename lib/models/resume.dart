@@ -21,4 +21,7 @@ class ResumePeriode {
 
   double get depensesEtPertes => totalDepenses + totalPertes;
   double get benefice => totalVentes - totalAchat - depensesEtPertes;
+
+  /// Marge nette en % du chiffre d'affaires. `null` si aucune vente sur la période.
+  double? get margeEnPourcent => totalVentes == 0 ? null : (benefice / totalVentes) * 100;
 }

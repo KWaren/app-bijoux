@@ -38,6 +38,26 @@ class _VenteScreenState extends State<VenteScreen> {
     });
   }
 
+  Future<void> _supprimer(Vente v) async {
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer cette vente ?'),
+        content: const Text(
+          'La quantité vendue sera de nouveau disponible en stock. Une dette éventuellement liée à cette vente sera aussi supprimée. Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (confirme == true) {
+      await DbHelper.instance.deleteVente(v.id!);
+      _recharger();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,9 +88,18 @@ class _VenteScreenState extends State<VenteScreen> {
                         leading: ModelePhoto(photoPath: v.photoPath, taille: 48),
                         title: Text('${v.modeleNom ?? ''} — ${v.clientNom}'),
                         subtitle: Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendue}'),
-                        trailing: Text(
-                          formatMontant(v.prixVenteTotal),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              formatMontant(v.prixVenteTotal),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              onPressed: () => _supprimer(v),
+                            ),
+                          ],
                         ),
                       ),
                     );

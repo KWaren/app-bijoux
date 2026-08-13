@@ -131,6 +131,14 @@ class _ArrivageTile extends StatelessWidget {
             if (arrivage.prixVenteMax != null) Text('Prix vente max : ${formatMontant(arrivage.prixVenteMax!)}'),
             if (arrivage.prixVenteLast != null)
               Text('Dernier prix vendu : ${formatMontant(arrivage.prixVenteLast!)}'),
+            if (arrivage.beneficeEstime != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Bénéfice min. estimé sur le restant : '),
+                  PrixAchatText(valeur: arrivage.beneficeEstime!),
+                ],
+              ),
           ],
         ),
         trailing: arrivage.stockEpuise
