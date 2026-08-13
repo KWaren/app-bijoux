@@ -85,6 +85,7 @@ class ExportService {
       'Quantité',
       'Prix unitaire achat',
       'Prix total achat',
+      'Frais liés',
       'Qté endommagée',
       'Bijoux restants',
     ]);
@@ -95,6 +96,7 @@ class ExportService {
         IntCellValue(a.quantite),
         DoubleCellValue(a.prixAchatUnitaire),
         DoubleCellValue(a.prixAchatTotal),
+        DoubleCellValue(a.depensesLiees),
         IntCellValue(a.qteEndommage),
         IntCellValue(a.bijouxRestant),
       ]);
@@ -102,12 +104,13 @@ class ExportService {
   }
 
   void _remplirDepenses(Sheet sheet, List<Depense> depenses) {
-    _entete(sheet, ['Date', 'Désignation', 'Coût']);
+    _entete(sheet, ['Date', 'Désignation', 'Coût', 'Modèle lié']);
     for (final d in depenses) {
       sheet.appendRow([
         TextCellValue(formatDateAffichage(d.dateDepense)),
         TextCellValue(d.designation),
         DoubleCellValue(d.cout),
+        TextCellValue(d.modeleNom ?? ''),
       ]);
     }
   }

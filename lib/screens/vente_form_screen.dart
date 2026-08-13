@@ -72,12 +72,6 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final qte = int.parse(_qteCtrl.text);
-    if (qte > _arrivageSelectionne!.bijouxRestant) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Il ne reste que ${_arrivageSelectionne!.bijouxRestant} pièce(s) pour ce modèle.')),
-      );
-      return;
-    }
 
     final client = _clientController?.text.trim() ?? '';
     if (client.isEmpty) {
@@ -86,6 +80,25 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     }
 
     setState(() => _enregistrement = true);
+
+    // Revérifie le stock disponible juste avant d'enregistrer : le snapshot chargé à
+    // l'ouverture du formulaire a pu devenir obsolète (autre vente entre-temps).
+    final arrivageAJour = await DbHelper.instance.getArrivageById(_arrivageSelectionne!.id!);
+    if (arrivageAJour == null || qte > arrivageAJour.bijouxRestant) {
+      if (mounted) {
+        setState(() => _enregistrement = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              arrivageAJour == null
+                  ? 'Ce modèle a été supprimé entre-temps.'
+                  : 'Il ne reste que ${arrivageAJour.bijouxRestant} pièce(s) pour ce modèle.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
     final prixTotal = double.parse(_prixVenteCtrl.text.replaceAll(',', '.'));
     final dateIso =
@@ -99,10 +112,9 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
       prixVenteTotal: prixTotal,
     ));
 
-    // Met à jour le "dernier prix vendu" du modèle (prix unitaire moyen de cette vente).
-    await DbHelper.instance.updateArrivage(
-      _arrivageSelectionne!.copyWith(prixVenteLast: prixTotal / qte),
-    );
+    // Met à jour le "dernier prix vendu" du modèle (prix unitaire moyen de cette vente),
+    // sans toucher au reste de la fiche.
+    await DbHelper.instance.updateArrivagePrixVenteLast(_arrivageSelectionne!.id!, prixTotal / qte);
 
     if (_venteACredit) {
       final montantPaye = double.tryParse(_montantPayeCtrl.text.replaceAll(',', '.')) ?? 0;

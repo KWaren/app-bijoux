@@ -15,6 +15,10 @@ class Arrivage {
   /// Alimenté par une jointure au moment de la lecture, jamais stocké en base.
   final int qteVendue;
 
+  /// Somme des dépenses (transport, douane...) rattachées à cet arrivage.
+  /// Alimenté par une jointure au moment de la lecture, jamais stocké en base.
+  final double depensesLiees;
+
   const Arrivage({
     this.id,
     required this.mois,
@@ -28,6 +32,7 @@ class Arrivage {
     this.photoPath,
     required this.dateAjout,
     this.qteVendue = 0,
+    this.depensesLiees = 0,
   });
 
   double get prixAchatTotal => quantite * prixAchatUnitaire;
@@ -36,11 +41,18 @@ class Arrivage {
   bool get stockEpuise => bijouxRestant <= 0;
   bool get stockBas => !stockEpuise && bijouxRestant <= 2;
 
+  /// Coût total du lot, frais annexes (transport, douane...) inclus.
+  double get coutTotalAvecFrais => prixAchatTotal + depensesLiees;
+
+  /// Coût unitaire réel du lot, frais annexes répartis sur la quantité achetée.
+  double get coutUnitaireAvecFrais => quantite > 0 ? coutTotalAvecFrais / quantite : prixAchatUnitaire;
+
   /// Bénéfice minimum garanti sur le stock restant si tout est vendu au prix
-  /// de vente minimum fixé. `null` tant qu'aucun prix minimum n'est renseigné.
+  /// de vente minimum fixé, frais annexes déduits. `null` tant qu'aucun prix
+  /// minimum n'est renseigné.
   double? get beneficeEstime {
     if (prixVenteMin == null) return null;
-    return bijouxRestant * (prixVenteMin! - prixAchatUnitaire);
+    return bijouxRestant * (prixVenteMin! - coutUnitaireAvecFrais);
   }
 
   Arrivage copyWith({
@@ -56,6 +68,7 @@ class Arrivage {
     String? photoPath,
     String? dateAjout,
     int? qteVendue,
+    double? depensesLiees,
   }) {
     return Arrivage(
       id: id ?? this.id,
@@ -70,6 +83,7 @@ class Arrivage {
       photoPath: photoPath ?? this.photoPath,
       dateAjout: dateAjout ?? this.dateAjout,
       qteVendue: qteVendue ?? this.qteVendue,
+      depensesLiees: depensesLiees ?? this.depensesLiees,
     );
   }
 
@@ -87,6 +101,7 @@ class Arrivage {
       photoPath: map['photo_path'] as String?,
       dateAjout: map['date_ajout'] as String,
       qteVendue: (map['qte_vendue'] as num?)?.toInt() ?? 0,
+      depensesLiees: (map['depenses_liees'] as num?)?.toDouble() ?? 0,
     );
   }
 

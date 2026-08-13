@@ -27,7 +27,7 @@ class DbHelper {
     final path = join(dbPath, dbFileName);
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE arrivages (
@@ -61,7 +61,8 @@ class DbHelper {
             mois TEXT NOT NULL,
             date_depense TEXT NOT NULL,
             designation TEXT NOT NULL,
-            cout REAL NOT NULL
+            cout REAL NOT NULL,
+            arrivage_id INTEGER REFERENCES arrivages(id)
           )
         ''');
         await db.execute('''
@@ -85,6 +86,9 @@ class DbHelper {
         if (oldVersion < 2) {
           await db.execute('ALTER TABLE arrivages ADD COLUMN prix_vente_min REAL');
         }
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE depenses ADD COLUMN arrivage_id INTEGER REFERENCES arrivages(id)');
+        }
       },
     );
   }
@@ -103,6 +107,13 @@ class DbHelper {
     return db.update('arrivages', a.toMap(), where: 'id = ?', whereArgs: [a.id]);
   }
 
+  /// Mise à jour ciblée du dernier prix vendu (appelée après une vente), pour ne
+  /// jamais écraser le reste de la fiche avec une copie potentiellement obsolète.
+  Future<void> updateArrivagePrixVenteLast(int id, double prixVenteLast) async {
+    final db = await database;
+    await db.update('arrivages', {'prix_vente_last': prixVenteLast}, where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<void> deleteArrivage(int id) async {
     final db = await database;
     final ventes = await db.query('ventes', columns: ['id'], where: 'arrivage_id = ?', whereArgs: [id]);
@@ -110,17 +121,25 @@ class DbHelper {
       await db.delete('dettes', where: 'vente_id = ?', whereArgs: [v['id']]);
     }
     await db.delete('ventes', where: 'arrivage_id = ?', whereArgs: [id]);
+    // Les dépenses liées restent (l'argent a bien été dépensé), seul le lien est retiré.
+    await db.update('depenses', {'arrivage_id': null}, where: 'arrivage_id = ?', whereArgs: [id]);
     await db.delete('arrivages', where: 'id = ?', whereArgs: [id]);
   }
+
+  /// Sous-requêtes (plutôt que LEFT JOIN + GROUP BY) pour agréger séparément
+  /// ventes et dépenses sans effet de fan-out entre les deux jointures.
+  static const String _selectArrivageAvecAgregats = '''
+    SELECT a.*,
+      COALESCE((SELECT SUM(v.qte_vendue) FROM ventes v WHERE v.arrivage_id = a.id), 0) as qte_vendue,
+      COALESCE((SELECT SUM(d.cout) FROM depenses d WHERE d.arrivage_id = a.id), 0) as depenses_liees
+    FROM arrivages a
+  ''';
 
   Future<List<Arrivage>> getArrivagesByMois(String mois) async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT a.*, COALESCE(SUM(v.qte_vendue), 0) as qte_vendue
-      FROM arrivages a
-      LEFT JOIN ventes v ON v.arrivage_id = a.id
+      $_selectArrivageAvecAgregats
       WHERE a.mois = ?
-      GROUP BY a.id
       ORDER BY a.date_ajout DESC, a.id DESC
     ''', [mois]);
     return rows.map(Arrivage.fromMap).toList();
@@ -131,11 +150,9 @@ class DbHelper {
   Future<List<Arrivage>> getArrivagesEnStock() async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT a.*, COALESCE(SUM(v.qte_vendue), 0) as qte_vendue
-      FROM arrivages a
-      LEFT JOIN ventes v ON v.arrivage_id = a.id
-      GROUP BY a.id
-      HAVING (a.quantite - a.qte_endommage - COALESCE(SUM(v.qte_vendue), 0)) > 0
+      $_selectArrivageAvecAgregats
+      WHERE (a.quantite - a.qte_endommage -
+        COALESCE((SELECT SUM(v.qte_vendue) FROM ventes v WHERE v.arrivage_id = a.id), 0)) > 0
       ORDER BY a.modele ASC
     ''');
     return rows.map(Arrivage.fromMap).toList();
@@ -144,11 +161,8 @@ class DbHelper {
   Future<Arrivage?> getArrivageById(int id) async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT a.*, COALESCE(SUM(v.qte_vendue), 0) as qte_vendue
-      FROM arrivages a
-      LEFT JOIN ventes v ON v.arrivage_id = a.id
+      $_selectArrivageAvecAgregats
       WHERE a.id = ?
-      GROUP BY a.id
     ''', [id]);
     if (rows.isEmpty) return null;
     return Arrivage.fromMap(rows.first);
@@ -159,13 +173,21 @@ class DbHelper {
   Future<List<Arrivage>> getArrivagesByPeriode(DateTime debut, DateTime fin) async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT a.*, COALESCE(SUM(v.qte_vendue), 0) as qte_vendue
-      FROM arrivages a
-      LEFT JOIN ventes v ON v.arrivage_id = a.id
+      $_selectArrivageAvecAgregats
       WHERE a.date_ajout BETWEEN ? AND ?
-      GROUP BY a.id
       ORDER BY a.date_ajout DESC, a.id DESC
     ''', [_fmt(debut), _fmt(fin)]);
+    return rows.map(Arrivage.fromMap).toList();
+  }
+
+  /// Tous les arrivages, du plus récent au plus ancien (utilisé pour choisir
+  /// un modèle auquel rattacher une dépense).
+  Future<List<Arrivage>> getTousLesArrivages() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      $_selectArrivageAvecAgregats
+      ORDER BY a.date_ajout DESC, a.id DESC
+    ''');
     return rows.map(Arrivage.fromMap).toList();
   }
 
@@ -239,18 +261,25 @@ class DbHelper {
 
   Future<List<Depense>> getDepensesByMois(String mois) async {
     final db = await database;
-    final rows = await db.query('depenses', where: 'mois = ?', whereArgs: [mois], orderBy: 'date_depense DESC, id DESC');
+    final rows = await db.rawQuery('''
+      SELECT d.*, a.modele as modele
+      FROM depenses d
+      LEFT JOIN arrivages a ON a.id = d.arrivage_id
+      WHERE d.mois = ?
+      ORDER BY d.date_depense DESC, d.id DESC
+    ''', [mois]);
     return rows.map(Depense.fromMap).toList();
   }
 
   Future<List<Depense>> getDepensesByPeriode(DateTime debut, DateTime fin) async {
     final db = await database;
-    final rows = await db.query(
-      'depenses',
-      where: 'date_depense BETWEEN ? AND ?',
-      whereArgs: [_fmt(debut), _fmt(fin)],
-      orderBy: 'date_depense DESC, id DESC',
-    );
+    final rows = await db.rawQuery('''
+      SELECT d.*, a.modele as modele
+      FROM depenses d
+      LEFT JOIN arrivages a ON a.id = d.arrivage_id
+      WHERE d.date_depense BETWEEN ? AND ?
+      ORDER BY d.date_depense DESC, d.id DESC
+    ''', [_fmt(debut), _fmt(fin)]);
     return rows.map(Depense.fromMap).toList();
   }
 

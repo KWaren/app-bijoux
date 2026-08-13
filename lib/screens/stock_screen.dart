@@ -128,6 +128,14 @@ class _ArrivageTile extends StatelessWidget {
                 PrixAchatText(valeur: arrivage.prixAchatUnitaire),
               ],
             ),
+            if (arrivage.depensesLiees > 0)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Frais liés (transport, douane...) : '),
+                  PrixAchatText(valeur: arrivage.depensesLiees),
+                ],
+              ),
             if (arrivage.prixVenteMax != null) Text('Prix vente max : ${formatMontant(arrivage.prixVenteMax!)}'),
             if (arrivage.prixVenteLast != null)
               Text('Dernier prix vendu : ${formatMontant(arrivage.prixVenteLast!)}'),

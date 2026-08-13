@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../database/db_helper.dart';
+import '../models/arrivage.dart';
 import '../models/depense.dart';
 import '../state/app_state.dart';
 import '../utils/formatters.dart';
@@ -38,43 +39,81 @@ class _DepensesScreenState extends State<DepensesScreen> {
     final designationCtrl = TextEditingController();
     final coutCtrl = TextEditingController();
     DateTime dateDepense = DateTime.now();
+    Arrivage? arrivageLie;
+
+    final arrivages = await DbHelper.instance.getTousLesArrivages();
 
     final ajoute = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Nouvelle dépense'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: designationCtrl,
-                decoration: const InputDecoration(labelText: 'Désignation (ex : Sachets, Transport...)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: coutCtrl,
-                decoration: InputDecoration(labelText: 'Coût ($devise)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(formatDateAffichage(
-                  '${dateDepense.year.toString().padLeft(4, '0')}-${dateDepense.month.toString().padLeft(2, '0')}-${dateDepense.day.toString().padLeft(2, '0')}',
-                )),
-                trailing: const Icon(Icons.calendar_month),
-                onTap: () async {
-                  final choix = await showDatePicker(
-                    context: context,
-                    initialDate: dateDepense,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime.now().add(const Duration(days: 1)),
-                  );
-                  if (choix != null) setDialogState(() => dateDepense = choix);
-                },
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: designationCtrl,
+                  decoration: const InputDecoration(labelText: 'Désignation (ex : Sachets, Transport...)'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: coutCtrl,
+                  decoration: InputDecoration(labelText: 'Coût ($devise)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(formatDateAffichage(
+                    '${dateDepense.year.toString().padLeft(4, '0')}-${dateDepense.month.toString().padLeft(2, '0')}-${dateDepense.day.toString().padLeft(2, '0')}',
+                  )),
+                  trailing: const Icon(Icons.calendar_month),
+                  onTap: () async {
+                    final choix = await showDatePicker(
+                      context: context,
+                      initialDate: dateDepense,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 1)),
+                    );
+                    if (choix != null) setDialogState(() => dateDepense = choix);
+                  },
+                ),
+                if (arrivages.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Autocomplete<Arrivage>(
+                    displayStringForOption: (a) => a.modele,
+                    optionsBuilder: (v) {
+                      if (v.text.isEmpty) return arrivages;
+                      return arrivages.where((a) => a.modele.toLowerCase().contains(v.text.toLowerCase()));
+                    },
+                    onSelected: (a) => setDialogState(() => arrivageLie = a),
+                    fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: InputDecoration(
+                          labelText: 'Lié à un modèle (optionnel)',
+                          helperText: 'Ex : frais de transport ou de douane pour ce lot',
+                          suffixIcon: arrivageLie != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () {
+                                    controller.clear();
+                                    setDialogState(() => arrivageLie = null);
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (t) {
+                          if (t.isEmpty && arrivageLie != null) setDialogState(() => arrivageLie = null);
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
@@ -97,6 +136,7 @@ class _DepensesScreenState extends State<DepensesScreen> {
       dateDepense: dateIso,
       designation: designationCtrl.text.trim(),
       cout: cout,
+      arrivageId: arrivageLie?.id,
     ));
     if (mounted) {
       context.read<AppState>().ajouterMoisSiAbsent(mois);
@@ -149,7 +189,11 @@ class _DepensesScreenState extends State<DepensesScreen> {
                           return Card(
                             child: ListTile(
                               title: Text(d.designation),
-                              subtitle: Text(formatDateAffichage(d.dateDepense)),
+                              subtitle: Text(
+                                d.modeleNom != null
+                                    ? '${formatDateAffichage(d.dateDepense)} · Lié à ${d.modeleNom}'
+                                    : formatDateAffichage(d.dateDepense),
+                              ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

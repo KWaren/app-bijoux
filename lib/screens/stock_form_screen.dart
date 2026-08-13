@@ -43,13 +43,15 @@ class _StockFormScreenState extends State<StockFormScreen> {
     _quantiteCtrl = TextEditingController(text: a != null ? a.quantite.toString() : '');
     _prixAchatTotalCtrl = TextEditingController(text: a != null ? _formatNombre(a.prixAchatTotal) : '');
     _qteEndommageCtrl = TextEditingController(text: a != null ? a.qteEndommage.toString() : '0');
-    _prixVenteMaxCtrl = TextEditingController(text: a?.prixVenteMax?.toString() ?? '');
-    _prixVenteLastCtrl = TextEditingController(text: a?.prixVenteLast?.toString() ?? '');
-    _prixVenteMinCtrl = TextEditingController(text: a?.prixVenteMin?.toString() ?? '');
+    _prixVenteMaxCtrl = TextEditingController(text: a?.prixVenteMax != null ? _formatNombre(a!.prixVenteMax!) : '');
+    _prixVenteLastCtrl = TextEditingController(text: a?.prixVenteLast != null ? _formatNombre(a!.prixVenteLast!) : '');
+    _prixVenteMinCtrl = TextEditingController(text: a?.prixVenteMin != null ? _formatNombre(a!.prixVenteMin!) : '');
     _dateAjout = a != null ? DateTime.parse(a.dateAjout) : _premierJourUtileDuMois(widget.mois);
     _photoPath = a?.photoPath;
-    _quantiteCtrl.addListener(_recalculerPrixUnitaire);
-    _prixAchatTotalCtrl.addListener(_recalculerPrixUnitaire);
+    _quantiteCtrl.addListener(_recalculer);
+    _prixAchatTotalCtrl.addListener(_recalculer);
+    _qteEndommageCtrl.addListener(_recalculer);
+    _prixVenteMinCtrl.addListener(_recalculer);
   }
 
   /// Affiche un nombre sans décimales inutiles (ex: 15000 plutôt que 15000.0).
@@ -65,7 +67,37 @@ class _StockFormScreenState extends State<StockFormScreen> {
     return total / quantite;
   }
 
-  void _recalculerPrixUnitaire() => setState(() {});
+  /// Frais déjà rattachés à cet arrivage (transport, douane...) en mode édition.
+  /// Nul à la création : on ne peut lier une dépense qu'à un arrivage déjà enregistré.
+  double get _depensesLieesExistantes => widget.arrivage?.depensesLiees ?? 0;
+
+  /// Bénéfice minimum garanti sur le stock restant si tout est vendu au prix de
+  /// vente minimum saisi, frais annexes déjà rattachés inclus. Recalculé en
+  /// direct pendant la saisie du formulaire (même logique que
+  /// `Arrivage.beneficeEstime`, avant enregistrement).
+  double? get _beneficeEstimeCalcule {
+    final quantite = int.tryParse(_quantiteCtrl.text);
+    final prixAchatTotal = double.tryParse(_prixAchatTotalCtrl.text.replaceAll(',', '.'));
+    final prixVenteMin = double.tryParse(_prixVenteMinCtrl.text.replaceAll(',', '.'));
+    if (quantite == null || quantite <= 0 || prixAchatTotal == null || prixVenteMin == null) return null;
+    final qteEndommage = int.tryParse(_qteEndommageCtrl.text) ?? 0;
+    final qteVendue = widget.arrivage?.qteVendue ?? 0;
+    final restant = quantite - qteEndommage - qteVendue;
+    if (restant <= 0) return null;
+    final coutUnitaire = (prixAchatTotal + _depensesLieesExistantes) / quantite;
+    return restant * (prixVenteMin - coutUnitaire);
+  }
+
+  void _recalculer() => setState(() {});
+
+  /// Les prix de vente max/dernier/min sont optionnels : un champ vide est
+  /// valide, mais un texte non vide doit être un nombre (sinon `double.parse`
+  /// plante à l'enregistrement).
+  String? _validateurMontantOptionnel(String? v) {
+    final t = (v ?? '').trim();
+    if (t.isEmpty) return null;
+    return double.tryParse(t.replaceAll(',', '.')) == null ? 'Montant invalide' : null;
+  }
 
   DateTime _premierJourUtileDuMois(String moisYYYYMM) {
     final parts = moisYYYYMM.split('-');
@@ -239,6 +271,8 @@ class _StockFormScreenState extends State<StockFormScreen> {
               validator: (v) {
                 final n = int.tryParse(v ?? '');
                 if (n == null || n <= 0) return 'Nombre invalide';
+                final dejaEcoule = (widget.arrivage?.qteVendue ?? 0) + (int.tryParse(_qteEndommageCtrl.text) ?? 0);
+                if (n < dejaEcoule) return 'Doit être ≥ $dejaEcoule (déjà vendu/endommagé)';
                 return null;
               },
             ),
@@ -265,6 +299,14 @@ class _StockFormScreenState extends State<StockFormScreen> {
               controller: _qteEndommageCtrl,
               decoration: const InputDecoration(labelText: 'Quantité endommagée'),
               keyboardType: TextInputType.number,
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null || n < 0) return 'Nombre invalide';
+                final quantite = int.tryParse(_quantiteCtrl.text) ?? 0;
+                final qteVendue = widget.arrivage?.qteVendue ?? 0;
+                if (n + qteVendue > quantite) return 'Trop élevé : max ${quantite - qteVendue}';
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -274,18 +316,32 @@ class _StockFormScreenState extends State<StockFormScreen> {
                 helperText: 'Sert à estimer le bénéfice minimum garanti sur ce modèle',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: _validateurMontantOptionnel,
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                _beneficeEstimeCalcule != null
+                    ? 'Bénéfice min. garanti estimé sur le stock restant : ${formatMontant(_beneficeEstimeCalcule!)}'
+                        '${_depensesLieesExistantes > 0 ? ' (frais liés de ${formatMontant(_depensesLieesExistantes)} déduits)' : ''}'
+                    : 'Bénéfice min. garanti estimé : — (quantité, prix d\'achat et prix de vente minimum requis)',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _prixVenteMaxCtrl,
               decoration: InputDecoration(labelText: 'Prix de vente max ($devise) — optionnel'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: _validateurMontantOptionnel,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _prixVenteLastCtrl,
               decoration: InputDecoration(labelText: 'Dernier prix vendu ($devise) — optionnel'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: _validateurMontantOptionnel,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
