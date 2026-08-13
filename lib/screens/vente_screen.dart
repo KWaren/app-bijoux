@@ -1,0 +1,97 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../database/db_helper.dart';
+import '../models/vente.dart';
+import '../state/app_state.dart';
+import '../utils/date_ranges.dart';
+import '../utils/formatters.dart';
+import '../widgets/modele_photo.dart';
+import '../widgets/month_selector.dart';
+import 'vente_form_screen.dart';
+
+class VenteScreen extends StatefulWidget {
+  const VenteScreen({super.key});
+
+  @override
+  State<VenteScreen> createState() => _VenteScreenState();
+}
+
+class _VenteScreenState extends State<VenteScreen> {
+  Future<List<Vente>>? _futureVentes;
+  String? _moisCharge;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mois = context.watch<AppState>().moisSelectionne;
+    if (mois != _moisCharge) {
+      _moisCharge = mois;
+      _recharger();
+    }
+  }
+
+  void _recharger() {
+    final periode = rangeMois(_moisCharge!);
+    setState(() {
+      _futureVentes = DbHelper.instance.getVentesByPeriode(periode.debut, periode.fin);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ventes')),
+      body: Column(
+        children: [
+          const Padding(padding: EdgeInsets.all(16), child: MonthSelector()),
+          Expanded(
+            child: FutureBuilder<List<Vente>>(
+              future: _futureVentes,
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final ventes = snapshot.data!;
+                if (ventes.isEmpty) {
+                  return const Center(
+                    child: Padding(padding: EdgeInsets.all(24), child: Text('Aucune vente ce mois-ci.')),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 90),
+                  itemCount: ventes.length,
+                  itemBuilder: (context, index) {
+                    final v = ventes[index];
+                    return Card(
+                      child: ListTile(
+                        leading: ModelePhoto(photoPath: v.photoPath, taille: 48),
+                        title: Text('${v.modeleNom ?? ''} — ${v.clientNom}'),
+                        subtitle: Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendue}'),
+                        trailing: Text(
+                          formatMontant(v.prixVenteTotal),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.add_shopping_cart),
+        label: const Text('Nouvelle vente'),
+        onPressed: () async {
+          final cree = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(builder: (_) => const VenteFormScreen()),
+          );
+          if (cree == true) _recharger();
+        },
+      ),
+    );
+  }
+}
