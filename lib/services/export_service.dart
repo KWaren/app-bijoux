@@ -56,7 +56,7 @@ class ExportService {
     _entete(sheet, ['Indicateur', 'Valeur']);
     sheet.appendRow([TextCellValue('Période'), TextCellValue(periode.libelle)]);
     sheet.appendRow([TextCellValue('Nombre de ventes'), IntCellValue(resume.nbVentes)]);
-    sheet.appendRow([TextCellValue("Total prix d'achat"), DoubleCellValue(resume.totalAchat)]);
+    sheet.appendRow([TextCellValue('Coût des marchandises vendues'), DoubleCellValue(resume.coutMarchandisesVendues)]);
     sheet.appendRow([TextCellValue('Total des ventes'), DoubleCellValue(resume.totalVentes)]);
     sheet.appendRow([TextCellValue('Dépenses'), DoubleCellValue(resume.totalDepenses)]);
     sheet.appendRow([TextCellValue('Pertes (casse)'), DoubleCellValue(resume.totalPertes)]);

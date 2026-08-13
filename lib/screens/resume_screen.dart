@@ -264,7 +264,7 @@ class _ResumeDetail extends StatelessWidget {
         child: Column(
           children: [
             _Ligne(label: 'Nombre de ventes', valeur: '${resume.nbVentes}'),
-            _Ligne(label: "Total prix d'achat", valeur: formatMontant(resume.totalAchat)),
+            _Ligne(label: 'Coût des marchandises vendues', valeur: formatMontant(resume.coutMarchandisesVendues)),
             _Ligne(label: 'Total des ventes', valeur: formatMontant(resume.totalVentes)),
             _Ligne(label: 'Dépenses', valeur: formatMontant(resume.totalDepenses)),
             _Ligne(label: 'Pertes (casse)', valeur: formatMontant(resume.totalPertes)),

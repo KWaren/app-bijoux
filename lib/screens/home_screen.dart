@@ -144,43 +144,54 @@ class _ResumeCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.5,
+    final cartes = [
+      _StatCard(
+        label: 'Ventes du mois',
+        valeur: formatMontant(data.resume.totalVentes),
+        icone: Icons.point_of_sale,
+      ),
+      _StatCard(
+        label: 'Bénéfice du mois',
+        valeur: data.resume.margeEnPourcent != null
+            ? '${formatMontant(data.resume.benefice)}\n(${data.resume.margeEnPourcent!.toStringAsFixed(1)} %)'
+            : formatMontant(data.resume.benefice),
+        icone: Icons.trending_up,
+        couleur: data.resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+      ),
+      _StatCard(
+        label: 'Modèles en stock bas',
+        valeur: '${data.nbStockBas}',
+        icone: Icons.warning_amber_rounded,
+        couleur: data.nbStockBas > 0 ? Colors.orange.shade800 : null,
+      ),
+      _StatCard(
+        label: 'Dettes en cours',
+        valeur: formatMontant(data.dettesEnCours),
+        icone: Icons.receipt_long,
+      ),
+      _StatCard(
+        label: 'Bénéfice min. garanti sur le stock restant',
+        icone: Icons.savings_outlined,
+        valeurMasquee: data.beneficePotentielRestant,
+      ),
+    ];
+    // Rangées de 2 cartes dont la hauteur s'adapte au contenu (plutôt qu'un
+    // GridView à ratio fixe qui fait déborder le texte hors de la carte
+    // quand une valeur est longue ou que la police système est agrandie).
+    return Column(
       children: [
-        _StatCard(
-          label: 'Ventes du mois',
-          valeur: formatMontant(data.resume.totalVentes),
-          icone: Icons.point_of_sale,
-        ),
-        _StatCard(
-          label: 'Bénéfice du mois',
-          valeur: data.resume.margeEnPourcent != null
-              ? '${formatMontant(data.resume.benefice)}\n(${data.resume.margeEnPourcent!.toStringAsFixed(1)} %)'
-              : formatMontant(data.resume.benefice),
-          icone: Icons.trending_up,
-          couleur: data.resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
-        ),
-        _StatCard(
-          label: 'Modèles en stock bas',
-          valeur: '${data.nbStockBas}',
-          icone: Icons.warning_amber_rounded,
-          couleur: data.nbStockBas > 0 ? Colors.orange.shade800 : null,
-        ),
-        _StatCard(
-          label: 'Dettes en cours',
-          valeur: formatMontant(data.dettesEnCours),
-          icone: Icons.receipt_long,
-        ),
-        _StatCard(
-          label: 'Bénéfice min. garanti sur le stock restant',
-          icone: Icons.savings_outlined,
-          valeurMasquee: data.beneficePotentielRestant,
-        ),
+        for (var i = 0; i < cartes.length; i += 2)
+          Padding(
+            padding: EdgeInsets.only(bottom: i + 2 < cartes.length ? 12 : 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: cartes[i]),
+                const SizedBox(width: 12),
+                Expanded(child: i + 1 < cartes.length ? cartes[i + 1] : const SizedBox()),
+              ],
+            ),
+          ),
       ],
     );
   }

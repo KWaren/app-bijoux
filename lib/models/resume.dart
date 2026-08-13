@@ -1,7 +1,12 @@
 class ResumePeriode {
   final DateTime debut;
   final DateTime fin;
-  final double totalAchat;
+
+  /// Coût des marchandises effectivement vendues sur la période (quantité
+  /// vendue × coût unitaire du lot d'origine, frais liés inclus) — pas le
+  /// coût de tout ce qui a été acheté/réceptionné sur la période, pour que
+  /// le bénéfice corresponde aux ventes réalisées et non aux achats de stock.
+  final double coutMarchandisesVendues;
   final double totalVentes;
   final double totalDepenses;
   final double totalPertes;
@@ -11,7 +16,7 @@ class ResumePeriode {
   const ResumePeriode({
     required this.debut,
     required this.fin,
-    required this.totalAchat,
+    required this.coutMarchandisesVendues,
     required this.totalVentes,
     required this.totalDepenses,
     required this.totalPertes,
@@ -20,7 +25,7 @@ class ResumePeriode {
   });
 
   double get depensesEtPertes => totalDepenses + totalPertes;
-  double get benefice => totalVentes - totalAchat - depensesEtPertes;
+  double get benefice => totalVentes - coutMarchandisesVendues - depensesEtPertes;
 
   /// Marge nette en % du chiffre d'affaires. `null` si aucune vente sur la période.
   double? get margeEnPourcent => totalVentes == 0 ? null : (benefice / totalVentes) * 100;

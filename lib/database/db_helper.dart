@@ -342,10 +342,23 @@ class DbHelper {
     final debutStr = _fmt(debut);
     final finStr = _fmt(fin);
 
-    final achatRows = await db.rawQuery(
-      'SELECT COALESCE(SUM(quantite * prix_achat_unitaire), 0) as total FROM arrivages WHERE date_ajout BETWEEN ? AND ?',
-      [debutStr, finStr],
-    );
+    // Coût des marchandises VENDUES sur la période (pas de tout ce qui a été
+    // acheté sur la période) : chaque vente est valorisée au coût unitaire de
+    // son lot d'origine (prix d'achat + frais liés répartis sur la quantité
+    // du lot). Sans ça, un gros réassort fait paraître le mois très déficitaire
+    // même si le stock n'est pas encore vendu, et l'inverse le mois suivant.
+    final achatRows = await db.rawQuery('''
+      SELECT COALESCE(SUM(
+        v.qte_vendue * (
+          (a.quantite * a.prix_achat_unitaire +
+            COALESCE((SELECT SUM(d.cout) FROM depenses d WHERE d.arrivage_id = a.id), 0)
+          ) / a.quantite
+        )
+      ), 0) as total
+      FROM ventes v
+      JOIN arrivages a ON a.id = v.arrivage_id
+      WHERE v.date_vente BETWEEN ? AND ?
+    ''', [debutStr, finStr]);
     final pertesRows = await db.rawQuery(
       'SELECT COALESCE(SUM(qte_endommage * prix_achat_unitaire), 0) as total FROM arrivages WHERE date_ajout BETWEEN ? AND ?',
       [debutStr, finStr],
@@ -354,8 +367,12 @@ class DbHelper {
       'SELECT COALESCE(SUM(prix_vente_total), 0) as total, COUNT(*) as nb FROM ventes WHERE date_vente BETWEEN ? AND ?',
       [debutStr, finStr],
     );
+    // Les dépenses rattachées à un arrivage (arrivage_id non nul) sont déjà
+    // comptées dans le coût des marchandises vendues ci-dessus (au fil des
+    // ventes de ce lot) : on ne garde ici que les dépenses générales, pour
+    // ne pas les compter deux fois dans le bénéfice.
     final depensesRows = await db.rawQuery(
-      'SELECT COALESCE(SUM(cout), 0) as total FROM depenses WHERE date_depense BETWEEN ? AND ?',
+      'SELECT COALESCE(SUM(cout), 0) as total FROM depenses WHERE date_depense BETWEEN ? AND ? AND arrivage_id IS NULL',
       [debutStr, finStr],
     );
     final dettesCreees = await getDettesCreeesEntre(debut, fin);
@@ -363,7 +380,7 @@ class DbHelper {
     return ResumePeriode(
       debut: debut,
       fin: fin,
-      totalAchat: (achatRows.first['total'] as num).toDouble(),
+      coutMarchandisesVendues: (achatRows.first['total'] as num).toDouble(),
       totalVentes: (ventesRows.first['total'] as num).toDouble(),
       totalDepenses: (depensesRows.first['total'] as num).toDouble(),
       totalPertes: (pertesRows.first['total'] as num).toDouble(),
