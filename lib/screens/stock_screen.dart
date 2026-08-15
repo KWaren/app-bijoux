@@ -5,9 +5,11 @@ import '../database/db_helper.dart';
 import '../models/arrivage.dart';
 import '../state/app_state.dart';
 import '../utils/formatters.dart';
+import '../widgets/erreur_chargement.dart';
 import '../widgets/modele_photo.dart';
 import '../widgets/month_selector.dart';
 import '../widgets/price_hidden_widget.dart';
+import 'depenses_screen.dart';
 import 'stock_form_screen.dart';
 
 class StockScreen extends StatefulWidget {
@@ -51,6 +53,13 @@ class _StockScreenState extends State<StockScreen> {
         title: const Text('Arrivage / Stock'),
         actions: [
           IconButton(
+            tooltip: 'Autres dépenses',
+            icon: const Icon(Icons.receipt_long),
+            onPressed: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const DepensesScreen()));
+            },
+          ),
+          IconButton(
             tooltip: appState.prixAchatVisible ? "Masquer le prix d'achat" : "Afficher le prix d'achat",
             icon: Icon(appState.prixAchatVisible ? Icons.visibility_off : Icons.visibility),
             onPressed: () => context.read<AppState>().toggleVisibilitePrixAchat(),
@@ -64,6 +73,9 @@ class _StockScreenState extends State<StockScreen> {
             child: FutureBuilder<List<Arrivage>>(
               future: _futureArrivages,
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ErreurChargement(erreur: snapshot.error, onReessayer: _recharger);
+                }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -121,16 +133,14 @@ class _ArrivageTile extends StatelessWidget {
           children: [
             Text('Restant : ${arrivage.bijouxRestant} / ${arrivage.quantite}'),
             if (arrivage.qteEndommage > 0) Text('Endommagé : ${arrivage.qteEndommage}'),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
               children: [
-                const Text("Prix achat unit. : "),
+                const Text('Prix achat unit. : '),
                 PrixAchatText(valeur: arrivage.prixAchatUnitaire),
               ],
             ),
             if (arrivage.depensesLiees > 0)
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              Wrap(
                 children: [
                   const Text('Frais liés (transport, douane...) : '),
                   PrixAchatText(valeur: arrivage.depensesLiees),
@@ -140,8 +150,7 @@ class _ArrivageTile extends StatelessWidget {
             if (arrivage.prixVenteLast != null)
               Text('Dernier prix vendu : ${formatMontant(arrivage.prixVenteLast!)}'),
             if (arrivage.beneficeEstime != null)
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              Wrap(
                 children: [
                   const Text('Bénéfice min. estimé sur le restant : '),
                   PrixAchatText(valeur: arrivage.beneficeEstime!),

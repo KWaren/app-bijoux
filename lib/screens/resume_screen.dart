@@ -8,8 +8,8 @@ import '../services/export_service.dart';
 import '../state/app_state.dart';
 import '../utils/date_ranges.dart';
 import '../utils/formatters.dart';
+import '../widgets/erreur_chargement.dart';
 import '../widgets/month_selector.dart';
-import 'depenses_screen.dart';
 
 enum _TypePeriode { jour, semaine, mois }
 
@@ -131,19 +131,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Résumé'),
-        actions: [
-          IconButton(
-            tooltip: 'Autres dépenses',
-            icon: const Icon(Icons.receipt_long),
-            onPressed: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => const DepensesScreen()));
-              _recharger();
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Résumé')),
       body: RefreshIndicator(
         onRefresh: () async => _recharger(),
         child: ListView(
@@ -180,13 +168,24 @@ class _ResumeScreenState extends State<ResumeScreen> {
             FutureBuilder<ResumePeriode>(
               future: _futureResume,
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ErreurChargement(erreur: snapshot.error, onReessayer: _recharger);
+                }
                 if (!snapshot.hasData) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
-                return _ResumeDetail(resume: snapshot.data!);
+                return FutureBuilder<List<Dette>>(
+                  future: _futureDettes,
+                  builder: (context, detteSnapshot) {
+                    return _ResumeDetail(
+                      resume: snapshot.data!,
+                      dettesEnCours: detteSnapshot.data ?? const [],
+                    );
+                  },
+                );
               },
             ),
             const SizedBox(height: 12),
@@ -254,10 +253,39 @@ class _ResumeScreenState extends State<ResumeScreen> {
 
 class _ResumeDetail extends StatelessWidget {
   final ResumePeriode resume;
-  const _ResumeDetail({required this.resume});
+  final List<Dette> dettesEnCours;
+  const _ResumeDetail({required this.resume, this.dettesEnCours = const []});
+
+  void _afficherDetailDettes(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Dettes en cours'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: dettesEnCours
+                .map((d) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(d.clientNom),
+                      subtitle: d.description != null ? Text(d.description!) : null,
+                      trailing: Text(formatMontant(d.montant), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ))
+                .toList(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final totalDettesEnCours = dettesEnCours.fold<double>(0, (s, d) => s + d.montant);
+    final noms = dettesEnCours.map((d) => d.clientNom).toSet().join(', ');
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -266,6 +294,8 @@ class _ResumeDetail extends StatelessWidget {
             _Ligne(label: 'Nombre de ventes', valeur: '${resume.nbVentes}'),
             _Ligne(label: 'Coût des marchandises vendues', valeur: formatMontant(resume.coutMarchandisesVendues)),
             _Ligne(label: 'Total des ventes', valeur: formatMontant(resume.totalVentes)),
+            _Ligne(label: 'Total prix d\'achat', valeur: formatMontant(resume.totalAchats)),
+            _Ligne(label: 'Nombre de marchandises achetées', valeur: '${resume.nbMarchandisesAchetees}'),
             _Ligne(label: 'Dépenses', valeur: formatMontant(resume.totalDepenses)),
             _Ligne(label: 'Pertes (casse)', valeur: formatMontant(resume.totalPertes)),
             const Divider(),
@@ -277,6 +307,24 @@ class _ResumeDetail extends StatelessWidget {
               gras: true,
               couleur: resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
             ),
+            if (dettesEnCours.isNotEmpty)
+              InkWell(
+                onTap: () => _afficherDetailDettes(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Dettes en cours : ${formatMontant(totalDettesEnCours)}\n$noms',
+                          style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, size: 18, color: Colors.orange.shade900),
+                    ],
+                  ),
+                ),
+              ),
             if (resume.dettesCreees > 0)
               _Ligne(label: 'Nouvelles dettes sur la période', valeur: formatMontant(resume.dettesCreees)),
           ],

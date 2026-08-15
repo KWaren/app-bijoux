@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../database/db_helper.dart';
 import '../models/arrivage.dart';
 import '../models/dette.dart';
 import '../models/vente.dart';
+import '../state/app_state.dart';
 import '../utils/formatters.dart';
 import '../widgets/modele_photo.dart';
 
 class VenteFormScreen extends StatefulWidget {
-  const VenteFormScreen({super.key});
+  final Vente? vente;
+
+  const VenteFormScreen({super.key, this.vente});
 
   @override
   State<VenteFormScreen> createState() => _VenteFormScreenState();
@@ -16,33 +20,57 @@ class VenteFormScreen extends StatefulWidget {
 
 class _VenteFormScreenState extends State<VenteFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _qteCtrl = TextEditingController(text: '1');
-  final _prixVenteCtrl = TextEditingController();
+  late final TextEditingController _qteCtrl;
+  late final TextEditingController _prixVenteCtrl;
   final _montantPayeCtrl = TextEditingController();
+  late final TextEditingController _noteCtrl;
 
   List<Arrivage> _stock = [];
   List<String> _clients = [];
   Arrivage? _arrivageSelectionne;
   TextEditingController? _clientController;
-  DateTime _dateVente = DateTime.now();
+  late DateTime _dateVente;
   bool _venteACredit = false;
+  String _modePaiement = ModePaiement.especes;
   bool _chargement = true;
   bool _enregistrement = false;
+
+  bool get _modeEdition => widget.vente != null;
 
   @override
   void initState() {
     super.initState();
+    final v = widget.vente;
+    _qteCtrl = TextEditingController(text: v != null ? v.qteVendue.toString() : '1');
+    _prixVenteCtrl = TextEditingController(text: v != null ? _formatNombre(v.prixVenteTotal) : '');
+    _noteCtrl = TextEditingController(text: v?.note ?? '');
+    _dateVente = v != null ? DateTime.parse(v.dateVente) : DateTime.now();
+    _modePaiement = v?.modePaiement ?? ModePaiement.especes;
     _charger();
   }
 
+  String _formatNombre(double valeur) {
+    if (valeur == valeur.roundToDouble()) return valeur.toStringAsFixed(0);
+    return valeur.toStringAsFixed(2);
+  }
+
   Future<void> _charger() async {
-    final stock = await DbHelper.instance.getArrivagesEnStock();
     final clients = await DbHelper.instance.getClientsDistincts();
-    setState(() {
-      _stock = stock;
-      _clients = clients;
-      _chargement = false;
-    });
+    if (_modeEdition) {
+      final arrivage = await DbHelper.instance.getArrivageById(widget.vente!.arrivageId);
+      setState(() {
+        _arrivageSelectionne = arrivage;
+        _clients = clients;
+        _chargement = false;
+      });
+    } else {
+      final stock = await DbHelper.instance.getArrivagesEnStock();
+      setState(() {
+        _stock = stock;
+        _clients = clients;
+        _chargement = false;
+      });
+    }
   }
 
   @override
@@ -50,6 +78,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     _qteCtrl.dispose();
     _prixVenteCtrl.dispose();
     _montantPayeCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -84,7 +113,11 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     // Revérifie le stock disponible juste avant d'enregistrer : le snapshot chargé à
     // l'ouverture du formulaire a pu devenir obsolète (autre vente entre-temps).
     final arrivageAJour = await DbHelper.instance.getArrivageById(_arrivageSelectionne!.id!);
-    if (arrivageAJour == null || qte > arrivageAJour.bijouxRestant) {
+    // En modification, la quantité déjà attribuée à cette vente doit être remise
+    // dans le stock disponible avant de vérifier la nouvelle quantité demandée.
+    final ancienneQte = _modeEdition ? widget.vente!.qteVendue : 0;
+    final restantDisponible = arrivageAJour == null ? 0 : arrivageAJour.bijouxRestant + ancienneQte;
+    if (arrivageAJour == null || qte > restantDisponible) {
       if (mounted) {
         setState(() => _enregistrement = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,7 +125,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
             content: Text(
               arrivageAJour == null
                   ? 'Ce modèle a été supprimé entre-temps.'
-                  : 'Il ne reste que ${arrivageAJour.bijouxRestant} pièce(s) pour ce modèle.',
+                  : 'Il ne reste que $restantDisponible pièce(s) pour ce modèle.',
             ),
           ),
         );
@@ -103,34 +136,56 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     final prixTotal = double.parse(_prixVenteCtrl.text.replaceAll(',', '.'));
     final dateIso =
         '${_dateVente.year.toString().padLeft(4, '0')}-${_dateVente.month.toString().padLeft(2, '0')}-${_dateVente.day.toString().padLeft(2, '0')}';
+    final mois = dateIso.substring(0, 7);
+    final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
 
-    final venteId = await DbHelper.instance.insertVente(Vente(
-      arrivageId: _arrivageSelectionne!.id!,
-      clientNom: client,
-      dateVente: dateIso,
-      qteVendue: qte,
-      prixVenteTotal: prixTotal,
-    ));
+    if (_modeEdition) {
+      await DbHelper.instance.updateVente(Vente(
+        id: widget.vente!.id,
+        arrivageId: _arrivageSelectionne!.id!,
+        clientNom: client,
+        dateVente: dateIso,
+        qteVendue: qte,
+        prixVenteTotal: prixTotal,
+        modePaiement: _modePaiement,
+        note: note,
+      ));
+    } else {
+      final venteId = await DbHelper.instance.insertVente(Vente(
+        arrivageId: _arrivageSelectionne!.id!,
+        clientNom: client,
+        dateVente: dateIso,
+        qteVendue: qte,
+        prixVenteTotal: prixTotal,
+        modePaiement: _modePaiement,
+        note: note,
+      ));
 
-    // Met à jour le "dernier prix vendu" du modèle (prix unitaire moyen de cette vente),
-    // sans toucher au reste de la fiche.
-    await DbHelper.instance.updateArrivagePrixVenteLast(_arrivageSelectionne!.id!, prixTotal / qte);
+      // Met à jour le "dernier prix vendu" du modèle (prix unitaire moyen de cette vente),
+      // sans toucher au reste de la fiche.
+      await DbHelper.instance.updateArrivagePrixVenteLast(_arrivageSelectionne!.id!, prixTotal / qte);
 
-    if (_venteACredit) {
-      final montantPaye = double.tryParse(_montantPayeCtrl.text.replaceAll(',', '.')) ?? 0;
-      final resteAPayer = prixTotal - montantPaye;
-      if (resteAPayer > 0) {
-        await DbHelper.instance.insertDette(Dette(
-          clientNom: client,
-          venteId: venteId,
-          montant: resteAPayer,
-          description: 'Reste à payer — ${_arrivageSelectionne!.modele}',
-          dateDette: dateIso,
-        ));
+      if (_venteACredit) {
+        final montantPaye = double.tryParse(_montantPayeCtrl.text.replaceAll(',', '.')) ?? 0;
+        final resteAPayer = prixTotal - montantPaye;
+        if (resteAPayer > 0) {
+          await DbHelper.instance.insertDette(Dette(
+            clientNom: client,
+            venteId: venteId,
+            montant: resteAPayer,
+            description: 'Reste à payer — ${_arrivageSelectionne!.modele}',
+            dateDette: dateIso,
+          ));
+        }
       }
     }
 
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      // Comme pour le stock : sans ça, une vente enregistrée pour un mois différent
+      // de celui affiché à l'écran devient invisible tant qu'on ne le sélectionne pas.
+      context.read<AppState>().ajouterMoisSiAbsent(mois);
+      Navigator.pop(context, true);
+    }
   }
 
   @override
@@ -139,34 +194,47 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouvelle vente')),
+      appBar: AppBar(title: Text(_modeEdition ? 'Modifier la vente' : 'Nouvelle vente')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (_stock.isEmpty)
+            if (_modeEdition)
+              Row(
+                children: [
+                  ModelePhoto(photoPath: _arrivageSelectionne?.photoPath, taille: 44),
+                  const SizedBox(width: 12),
+                  Text(
+                    _arrivageSelectionne?.modele ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              )
+            else if (_stock.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text('Aucun modèle en stock. Ajoute un arrivage avant de vendre.'),
               )
-            else
+            else ...[
               _ChampModele(
                 stock: _stock,
                 selectionne: _arrivageSelectionne,
                 onSelected: (a) => setState(() => _arrivageSelectionne = a),
               ),
-            const SizedBox(height: 12),
-            if (_arrivageSelectionne != null)
-              Row(
-                children: [
-                  ModelePhoto(photoPath: _arrivageSelectionne!.photoPath, taille: 44),
-                  const SizedBox(width: 12),
-                  Text('Restant : ${_arrivageSelectionne!.bijouxRestant}'),
-                ],
-              ),
+              const SizedBox(height: 12),
+              if (_arrivageSelectionne != null)
+                Row(
+                  children: [
+                    ModelePhoto(photoPath: _arrivageSelectionne!.photoPath, taille: 44),
+                    const SizedBox(width: 12),
+                    Text('Restant : ${_arrivageSelectionne!.bijouxRestant}'),
+                  ],
+                ),
+            ],
             const SizedBox(height: 16),
             Autocomplete<String>(
+              initialValue: TextEditingValue(text: widget.vente?.clientNom ?? ''),
               optionsBuilder: (textEditingValue) {
                 if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
                 return _clients.where(
@@ -213,21 +281,51 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
               },
             ),
             const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vente à crédit / paiement partiel'),
-              value: _venteACredit,
-              onChanged: (v) => setState(() => _venteACredit = v),
+            DropdownButtonFormField<String>(
+              value: _modePaiement,
+              decoration: const InputDecoration(labelText: 'Mode de paiement'),
+              items: ModePaiement.libelles.entries
+                  .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _modePaiement = v);
+              },
             ),
-            if (_venteACredit)
-              TextFormField(
-                controller: _montantPayeCtrl,
-                decoration: InputDecoration(labelText: 'Montant payé maintenant ($devise)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _noteCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Note (optionnel)',
+                alignLabelWithHint: true,
               ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 12),
+            if (_modeEdition)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  "Pour gérer la dette éventuellement liée à cette vente, utilise l'écran Résumé.",
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              )
+            else ...[
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Vente à crédit / paiement partiel'),
+                value: _venteACredit,
+                onChanged: (v) => setState(() => _venteACredit = v),
+              ),
+              if (_venteACredit)
+                TextFormField(
+                  controller: _montantPayeCtrl,
+                  decoration: InputDecoration(labelText: 'Montant payé maintenant ($devise)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+            ],
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: (_enregistrement || _stock.isEmpty) ? null : _valider,
+              onPressed: (_enregistrement || (!_modeEdition && _stock.isEmpty)) ? null : _valider,
               child: Text(_enregistrement ? 'Enregistrement...' : 'Valider la vente'),
             ),
           ],

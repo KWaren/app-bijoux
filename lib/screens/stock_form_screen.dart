@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 
 import '../database/db_helper.dart';
 import '../models/arrivage.dart';
+import '../state/app_state.dart';
 import '../utils/formatters.dart';
 import '../widgets/modele_photo.dart';
 
@@ -32,6 +34,7 @@ class _StockFormScreenState extends State<StockFormScreen> {
   late DateTime _dateAjout;
   String? _photoPath;
   bool _enregistrement = false;
+  List<({String modele, String? photoPath})> _modelesConnus = [];
 
   bool get _modeEdition => widget.arrivage != null;
 
@@ -39,6 +42,11 @@ class _StockFormScreenState extends State<StockFormScreen> {
   void initState() {
     super.initState();
     final a = widget.arrivage;
+    if (!_modeEdition) {
+      DbHelper.instance.getModelesConnus().then((liste) {
+        if (mounted) setState(() => _modelesConnus = liste);
+      });
+    }
     _modeleCtrl = TextEditingController(text: a?.modele ?? '');
     _quantiteCtrl = TextEditingController(text: a != null ? a.quantite.toString() : '');
     _prixAchatTotalCtrl = TextEditingController(text: a != null ? _formatNombre(a.prixAchatTotal) : '');
@@ -195,7 +203,13 @@ class _StockFormScreenState extends State<StockFormScreen> {
     } else {
       await DbHelper.instance.insertArrivage(arrivage);
     }
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      // La date choisie peut tomber dans un mois différent de celui affiché à
+      // l'écran Stock (ex: arrivage saisi rétroactivement) : sans ça, ce mois
+      // n'apparaît jamais dans le sélecteur alors que la donnée est bien enregistrée.
+      context.read<AppState>().ajouterMoisSiAbsent(mois);
+      Navigator.pop(context, true);
+    }
   }
 
   Future<void> _supprimer() async {
@@ -248,11 +262,67 @@ class _StockFormScreenState extends State<StockFormScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            TextFormField(
-              controller: _modeleCtrl,
-              decoration: const InputDecoration(labelText: 'Nom du modèle'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
-            ),
+            if (_modeEdition)
+              TextFormField(
+                controller: _modeleCtrl,
+                decoration: const InputDecoration(labelText: 'Nom du modèle'),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
+              )
+            else
+              Autocomplete<({String modele, String? photoPath})>(
+                displayStringForOption: (m) => m.modele,
+                optionsBuilder: (textEditingValue) {
+                  if (textEditingValue.text.isEmpty) return _modelesConnus;
+                  return _modelesConnus.where(
+                    (m) => m.modele.toLowerCase().contains(textEditingValue.text.toLowerCase()),
+                  );
+                },
+                onSelected: (m) {
+                  // Ne reprend la photo que si aucune n'a déjà été choisie pour ce
+                  // nouvel arrivage : la quantité, le prix, etc. restent vierges.
+                  setState(() {
+                    if (_photoPath == null) _photoPath = m.photoPath;
+                  });
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  _modeleCtrl = controller;
+                  return TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom du modèle',
+                      helperText: 'Tape pour retrouver un modèle déjà enregistré (nom + photo repris)',
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
+                  );
+                },
+                optionsViewBuilder: (context, onSelectedOption, options) {
+                  final optionsList = options.toList();
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width - 32,
+                        height: optionsList.length > 4 ? 280 : null,
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: optionsList.length <= 4,
+                          children: optionsList
+                              .map(
+                                (m) => ListTile(
+                                  leading: ModelePhoto(photoPath: m.photoPath, taille: 36),
+                                  title: Text(m.modele),
+                                  onTap: () => onSelectedOption(m),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,

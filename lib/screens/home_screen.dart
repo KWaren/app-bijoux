@@ -7,6 +7,7 @@ import '../models/resume.dart';
 import '../state/app_state.dart';
 import '../utils/date_ranges.dart';
 import '../utils/formatters.dart';
+import '../widgets/erreur_chargement.dart';
 import '../widgets/evolution_mensuelle_chart.dart';
 import '../widgets/month_selector.dart';
 import '../widgets/price_hidden_widget.dart';
@@ -74,6 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
             FutureBuilder<_HomeData>(
               future: _futureData,
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ErreurChargement(erreur: snapshot.error, onReessayer: _recharger);
+                }
                 if (!snapshot.hasData) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),

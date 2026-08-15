@@ -27,7 +27,7 @@ class DbHelper {
     final path = join(dbPath, dbFileName);
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE arrivages (
@@ -52,6 +52,8 @@ class DbHelper {
             date_vente TEXT NOT NULL,
             qte_vendue INTEGER NOT NULL,
             prix_vente_total REAL NOT NULL,
+            mode_paiement TEXT,
+            note TEXT,
             FOREIGN KEY (arrivage_id) REFERENCES arrivages(id)
           )
         ''');
@@ -88,6 +90,10 @@ class DbHelper {
         }
         if (oldVersion < 3) {
           await db.execute('ALTER TABLE depenses ADD COLUMN arrivage_id INTEGER REFERENCES arrivages(id)');
+        }
+        if (oldVersion < 4) {
+          await db.execute('ALTER TABLE ventes ADD COLUMN mode_paiement TEXT');
+          await db.execute('ALTER TABLE ventes ADD COLUMN note TEXT');
         }
       },
     );
@@ -191,6 +197,20 @@ class DbHelper {
     return rows.map(Arrivage.fromMap).toList();
   }
 
+  /// Nom + photo du dernier arrivage enregistré pour chaque modèle déjà connu
+  /// (tous mois confondus), pour proposer une suggestion à la création d'un
+  /// nouvel arrivage du même modèle sans ressaisir nom/photo.
+  Future<List<({String modele, String? photoPath})>> getModelesConnus() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT a1.modele as modele, a1.photo_path as photo_path
+      FROM arrivages a1
+      WHERE a1.id = (SELECT MAX(a2.id) FROM arrivages a2 WHERE a2.modele = a1.modele)
+      ORDER BY a1.modele ASC
+    ''');
+    return rows.map((r) => (modele: r['modele'] as String, photoPath: r['photo_path'] as String?)).toList();
+  }
+
   Future<List<String>> getMoisDisponibles() async {
     final db = await database;
     final rows = await db.rawQuery('''
@@ -215,18 +235,31 @@ class DbHelper {
     return db.insert('ventes', v.toMap());
   }
 
+  Future<void> updateVente(Vente v) async {
+    final db = await database;
+    await db.update('ventes', v.toMap(), where: 'id = ?', whereArgs: [v.id]);
+  }
+
   Future<void> deleteVente(int id) async {
     final db = await database;
     await db.delete('dettes', where: 'vente_id = ?', whereArgs: [id]);
     await db.delete('ventes', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Sous-requête pour indiquer, sans recharger tous les objets `Dette`, le
+  /// reste à payer encore en cours pour chaque vente (`null`/0 si soldée ou
+  /// vente comptant).
+  static const String _selectVenteAvecReste = '''
+    SELECT v.*, a.modele as modele, a.photo_path as photo_path,
+      (SELECT SUM(d.montant) FROM dettes d WHERE d.vente_id = v.id AND d.statut = 'en_cours') as reste_a_payer
+    FROM ventes v
+    JOIN arrivages a ON a.id = v.arrivage_id
+  ''';
+
   Future<List<Vente>> getVentesByPeriode(DateTime debut, DateTime fin) async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT v.*, a.modele as modele, a.photo_path as photo_path
-      FROM ventes v
-      JOIN arrivages a ON a.id = v.arrivage_id
+      $_selectVenteAvecReste
       WHERE v.date_vente BETWEEN ? AND ?
       ORDER BY v.date_vente DESC, v.id DESC
     ''', [_fmt(debut), _fmt(fin)]);
@@ -377,6 +410,14 @@ class DbHelper {
     );
     final dettesCreees = await getDettesCreeesEntre(debut, fin);
 
+    // Total des arrivages REÇUS sur la période (prix de gros payé), vendus ou
+    // non — distinct du coût des marchandises vendues calculé plus haut.
+    final achatsPeriodeRows = await db.rawQuery('''
+      SELECT COALESCE(SUM(quantite * prix_achat_unitaire), 0) as total, COALESCE(SUM(quantite), 0) as nb
+      FROM arrivages
+      WHERE date_ajout BETWEEN ? AND ?
+    ''', [debutStr, finStr]);
+
     return ResumePeriode(
       debut: debut,
       fin: fin,
@@ -386,6 +427,8 @@ class DbHelper {
       totalPertes: (pertesRows.first['total'] as num).toDouble(),
       nbVentes: (ventesRows.first['nb'] as num).toInt(),
       dettesCreees: dettesCreees,
+      totalAchats: (achatsPeriodeRows.first['total'] as num).toDouble(),
+      nbMarchandisesAchetees: (achatsPeriodeRows.first['nb'] as num).toInt(),
     );
   }
 

@@ -6,6 +6,7 @@ import '../models/vente.dart';
 import '../state/app_state.dart';
 import '../utils/date_ranges.dart';
 import '../utils/formatters.dart';
+import '../widgets/erreur_chargement.dart';
 import '../widgets/modele_photo.dart';
 import '../widgets/month_selector.dart';
 import 'vente_form_screen.dart';
@@ -69,6 +70,9 @@ class _VenteScreenState extends State<VenteScreen> {
             child: FutureBuilder<List<Vente>>(
               future: _futureVentes,
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ErreurChargement(erreur: snapshot.error, onReessayer: _recharger);
+                }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -83,11 +87,33 @@ class _VenteScreenState extends State<VenteScreen> {
                   itemCount: ventes.length,
                   itemBuilder: (context, index) {
                     final v = ventes[index];
+                    final aDette = v.resteAPayer != null && v.resteAPayer! > 0;
                     return Card(
                       child: ListTile(
                         leading: ModelePhoto(photoPath: v.photoPath, taille: 48),
                         title: Text('${v.modeleNom ?? ''} — ${v.clientNom}'),
-                        subtitle: Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendue}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendue}'),
+                            if (aDette)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'À crédit · reste ${formatMontant(v.resteAPayer!)}',
+                                    style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        isThreeLine: aDette,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -101,6 +127,13 @@ class _VenteScreenState extends State<VenteScreen> {
                             ),
                           ],
                         ),
+                        onTap: () async {
+                          final modifie = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(builder: (_) => VenteFormScreen(vente: v)),
+                          );
+                          if (modifie == true) _recharger();
+                        },
                       ),
                     );
                   },

@@ -13,6 +13,13 @@ class ResumePeriode {
   final int nbVentes;
   final double dettesCreees;
 
+  /// Total payé pour les arrivages reçus sur la période (prix de gros, vendus
+  /// ou non) — distinct du coût des marchandises vendues ci-dessus.
+  final double totalAchats;
+
+  /// Nombre total de pièces reçues (arrivages) sur la période.
+  final int nbMarchandisesAchetees;
+
   const ResumePeriode({
     required this.debut,
     required this.fin,
@@ -22,6 +29,8 @@ class ResumePeriode {
     required this.totalPertes,
     required this.nbVentes,
     required this.dettesCreees,
+    this.totalAchats = 0,
+    this.nbMarchandisesAchetees = 0,
   });
 
   double get depensesEtPertes => totalDepenses + totalPertes;
