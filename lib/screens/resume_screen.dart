@@ -116,7 +116,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
     );
     if (confirme != true) return;
 
-    final resultat = await FilePicker.platform.pickFiles(
+    final resultat = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['db'],
     );
