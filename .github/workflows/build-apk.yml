@@ -47,12 +47,6 @@ jobs:
           KEYSTORE_PATH="$GITHUB_WORKSPACE/scaffold/release.jks"
           echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
 
-          # `flutter.compileSdkVersion` (lu par TOUS les sous-modules de plugins Flutter,
-          # pas seulement :app) est piloté par local.properties, pas par le compileSdk
-          # déclaré dans build.gradle.kts : certains plugins (ex: file_picker) exigent
-          # une version plus récente que celle par défaut du scaffold généré.
-          echo "flutter.compileSdkVersion=36" >> scaffold/android/local.properties
-
           # Vérifie tout de suite, avec un message d'erreur clair, que la clé
           # stockée en secret peut bien être relue avant de lancer le build complet.
           keytool -list -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" \
