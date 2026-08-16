@@ -120,7 +120,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
       type: FileType.custom,
       allowedExtensions: ['db'],
     );
-    final chemin = resultat?.files.single.path;
+    final chemin = resultat?.single.path;
     if (chemin == null) return;
 
     setState(() => _restauration = true);
