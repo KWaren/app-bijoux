@@ -11,6 +11,18 @@ import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Par défaut, une erreur de construction de widget est invisible en release
+  // (case grise vide) : on force l'affichage du message pour pouvoir
+  // diagnostiquer un écran qui resterait vide sans ça.
+  ErrorWidget.builder = (details) => Container(
+        color: Colors.red.shade50,
+        padding: const EdgeInsets.all(12),
+        alignment: Alignment.center,
+        child: Text(
+          '${details.exception}',
+          style: TextStyle(color: Colors.red.shade900, fontSize: 12),
+        ),
+      );
   runApp(const AppBijoux());
 }
 
