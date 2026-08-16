@@ -77,6 +77,9 @@ jobs:
           }
 
           android {
+              // Certains plugins (ex: file_picker) exigent un compileSdk plus récent
+              // que celui par défaut du scaffold généré par `flutter create`.
+              compileSdk = 36
               signingConfigs {
                   create("release") {
                       keyAlias = keystoreProperties["keyAlias"] as String
@@ -100,6 +103,7 @@ jobs:
           }
 
           android {
+              compileSdkVersion 36
               signingConfigs {
                   release {
                       keyAlias keystoreProperties["keyAlias"]
