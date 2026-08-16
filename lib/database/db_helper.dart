@@ -22,6 +22,16 @@ class DbHelper {
     return _db!;
   }
 
+  /// Ferme la connexion active (nécessaire avant de remplacer le fichier de
+  /// base de données par une sauvegarde restaurée) ; rouverte automatiquement
+  /// au prochain accès à [database].
+  Future<void> fermer() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
   Future<Database> _initDb() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, dbFileName);

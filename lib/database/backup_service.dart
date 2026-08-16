@@ -58,6 +58,16 @@ class BackupService {
     return dest;
   }
 
+  /// Remplace la base de données actuelle par le fichier de sauvegarde donné.
+  /// Irréversible : toutes les données actuelles sont perdues au profit de
+  /// celles de la sauvegarde. L'appli doit être redémarrée après l'appel pour
+  /// que les écrans déjà ouverts relisent les nouvelles données.
+  Future<void> restaurerDepuisFichier(String cheminSauvegarde) async {
+    await DbHelper.instance.fermer();
+    final dbPath = await _dbPath();
+    await File(cheminSauvegarde).copy(dbPath);
+  }
+
   Future<void> partagerSauvegarde() async {
     final file = await creerSauvegardeManuelle();
     await Share.shareXFiles(

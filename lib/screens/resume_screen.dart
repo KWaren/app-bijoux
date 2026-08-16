@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,6 +30,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
   Periode? _periodeActuelle;
   bool _export = false;
   bool _sauvegarde = false;
+  bool _restauration = false;
   String? _moisVu;
 
   @override
@@ -93,6 +95,59 @@ class _ResumeScreenState extends State<ResumeScreen> {
       }
     } finally {
       if (mounted) setState(() => _sauvegarde = false);
+    }
+  }
+
+  Future<void> _restaurer() async {
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Restaurer une sauvegarde ?'),
+        content: const Text(
+          "Toutes les données actuelles de l'appli (stock, ventes, dépenses, dettes) seront "
+          'définitivement remplacées par le contenu du fichier de sauvegarde choisi. '
+          'Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Continuer')),
+        ],
+      ),
+    );
+    if (confirme != true) return;
+
+    final resultat = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['db'],
+    );
+    final chemin = resultat?.files.single.path;
+    if (chemin == null) return;
+
+    setState(() => _restauration = true);
+    try {
+      await BackupService.instance.restaurerDepuisFichier(chemin);
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('Sauvegarde restaurée'),
+            content: const Text(
+              "Ferme complètement l'application (pas juste revenir en arrière) puis rouvre-la "
+              'pour voir les données restaurées.',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la restauration : $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _restauration = false);
     }
   }
 
@@ -220,6 +275,13 @@ class _ResumeScreenState extends State<ResumeScreen> {
               'À faire régulièrement (WhatsApp, Drive, mail...) : la sauvegarde automatique quotidienne '
               "reste sur le téléphone et disparaît si l'appli est désinstallée.",
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _restauration ? null : _restaurer,
+              icon: const Icon(Icons.restore_outlined),
+              label: Text(_restauration ? 'Restauration...' : 'Restaurer une sauvegarde'),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
             ),
             const SizedBox(height: 24),
             Row(
