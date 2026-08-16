@@ -47,6 +47,12 @@ jobs:
           KEYSTORE_PATH="$GITHUB_WORKSPACE/scaffold/release.jks"
           echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
 
+          # `flutter.compileSdkVersion` (lu par TOUS les sous-modules de plugins Flutter,
+          # pas seulement :app) est piloté par local.properties, pas par le compileSdk
+          # déclaré dans build.gradle.kts : certains plugins (ex: file_picker) exigent
+          # une version plus récente que celle par défaut du scaffold généré.
+          echo "flutter.compileSdkVersion=36" >> scaffold/android/local.properties
+
           # Vérifie tout de suite, avec un message d'erreur clair, que la clé
           # stockée en secret peut bien être relue avant de lancer le build complet.
           keytool -list -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" \
@@ -66,12 +72,6 @@ jobs:
           KTS_FILE="scaffold/android/app/build.gradle.kts"
           if [ -f "$KTS_FILE" ]; then
             TARGET_FILE="$KTS_FILE"
-            # Certains plugins (ex: file_picker) exigent un compileSdk plus récent que
-            # celui par défaut du scaffold. `flutter.compileSdkVersion` est lu par TOUS
-            # les sous-modules de plugins Flutter (pas seulement :app), donc on doit
-            # remplacer cette valeur à la source plutôt que la surcharger plus bas.
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' "$TARGET_FILE"
-            grep -q 'compileSdk = 36' "$TARGET_FILE" || { echo "::error::compileSdk override failed — le modèle généré par flutter create a peut-être changé de format"; exit 1; }
             # Les imports Kotlin doivent être en tête de fichier ; une référence
             # qualifiée "java.util...." inline se fait shadow par l'accesseur Gradle
             # "java" injecté par le plugin Kotlin, d'où le besoin de les préfixer ici.
@@ -99,7 +99,6 @@ jobs:
           }'
           else
             TARGET_FILE="scaffold/android/app/build.gradle"
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' "$TARGET_FILE"
             SNIPPET='def keystoreProperties = new Properties()
           def keystorePropertiesFile = rootProject.file("key.properties")
           if (keystorePropertiesFile.exists()) {
