@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../database/backup_service.dart';
 import '../database/db_helper.dart';
 import '../models/dette.dart';
 import '../models/resume.dart';
@@ -27,6 +28,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
   Future<List<Dette>>? _futureDettes;
   Periode? _periodeActuelle;
   bool _export = false;
+  bool _sauvegarde = false;
   String? _moisVu;
 
   @override
@@ -78,6 +80,19 @@ class _ResumeScreenState extends State<ResumeScreen> {
       }
     } finally {
       if (mounted) setState(() => _export = false);
+    }
+  }
+
+  Future<void> _sauvegarder() async {
+    setState(() => _sauvegarde = true);
+    try {
+      await BackupService.instance.partagerSauvegarde();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la sauvegarde : $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _sauvegarde = false);
     }
   }
 
@@ -193,6 +208,18 @@ class _ResumeScreenState extends State<ResumeScreen> {
               onPressed: _export ? null : _exporter,
               icon: const Icon(Icons.file_download_outlined),
               label: Text(_export ? 'Génération...' : 'Exporter en Excel'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _sauvegarde ? null : _sauvegarder,
+              icon: const Icon(Icons.backup_outlined),
+              label: Text(_sauvegarde ? 'Préparation...' : 'Partager une sauvegarde complète'),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'À faire régulièrement (WhatsApp, Drive, mail...) : la sauvegarde automatique quotidienne '
+              "reste sur le téléphone et disparaît si l'appli est désinstallée.",
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 24),
             Row(

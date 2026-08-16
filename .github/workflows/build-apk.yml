@@ -37,8 +37,63 @@ jobs:
         working-directory: scaffold
         run: flutter pub get
 
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.APP_BIJOUX_KEYSTORE_BASE64 }}
+        run: |
+          KEYSTORE_PATH="$GITHUB_WORKSPACE/scaffold/release.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+
+          # Le scaffold Android est régénéré à chaque run par `flutter create`, donc la
+          # config de signature ne peut pas vivre dans un fichier versionné : on l'ajoute
+          # ici, en s'appuyant sur des variables d'environnement lues au moment du build
+          # (le mot de passe/clé ne sont donc jamais écrits sur disque en clair).
+          KTS_FILE="scaffold/android/app/build.gradle.kts"
+          GROOVY_FILE="scaffold/android/app/build.gradle"
+          if [ -f "$KTS_FILE" ]; then
+            TARGET_FILE="$KTS_FILE"
+            SNIPPET='android {
+              signingConfigs {
+                  create("release") {
+                      storeFile = file(System.getenv("APP_BIJOUX_KEYSTORE_PATH")!!)
+                      storePassword = System.getenv("APP_BIJOUX_KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("APP_BIJOUX_KEY_ALIAS")
+                      keyPassword = System.getenv("APP_BIJOUX_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("release")
+                  }
+              }
+          }'
+          else
+            TARGET_FILE="$GROOVY_FILE"
+            SNIPPET='android {
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv("APP_BIJOUX_KEYSTORE_PATH"))
+                      storePassword System.getenv("APP_BIJOUX_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("APP_BIJOUX_KEY_ALIAS")
+                      keyPassword System.getenv("APP_BIJOUX_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }'
+          fi
+          printf '%s\n' "$SNIPPET" >> "$TARGET_FILE"
+
       - name: Build release APK
         working-directory: scaffold
+        env:
+          APP_BIJOUX_KEYSTORE_PATH: ${{ github.workspace }}/scaffold/release.jks
+          APP_BIJOUX_KEYSTORE_PASSWORD: ${{ secrets.APP_BIJOUX_KEYSTORE_PASSWORD }}
+          APP_BIJOUX_KEY_ALIAS: ${{ secrets.APP_BIJOUX_KEY_ALIAS }}
+          APP_BIJOUX_KEY_PASSWORD: ${{ secrets.APP_BIJOUX_KEY_PASSWORD }}
         run: flutter build apk --release
 
       - name: Upload APK artifact
