@@ -66,10 +66,14 @@ jobs:
           KTS_FILE="scaffold/android/app/build.gradle.kts"
           if [ -f "$KTS_FILE" ]; then
             TARGET_FILE="$KTS_FILE"
-            SNIPPET='val keystoreProperties = java.util.Properties()
+            # Les imports Kotlin doivent être en tête de fichier ; une référence
+            # qualifiée "java.util...." inline se fait shadow par l'accesseur Gradle
+            # "java" injecté par le plugin Kotlin, d'où le besoin de les préfixer ici.
+            printf 'import java.util.Properties\nimport java.io.FileInputStream\n%s\n' "$(cat "$TARGET_FILE")" > "$TARGET_FILE"
+            SNIPPET='val keystoreProperties = Properties()
           val keystorePropertiesFile = rootProject.file("key.properties")
           if (keystorePropertiesFile.exists()) {
-              keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+              keystoreProperties.load(FileInputStream(keystorePropertiesFile))
           }
 
           android {
