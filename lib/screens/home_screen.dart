@@ -87,6 +87,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Marqueur de diagnostic temporaire : localise précisément où le rendu
+  /// s'arrête sans qu'aucune erreur ne soit levée (voir _voirJournalErreurs).
+  Widget _marqueur(String label) => Container(
+        width: double.infinity,
+        color: Colors.limeAccent,
+        padding: const EdgeInsets.all(4),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(label, style: const TextStyle(fontSize: 10)),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,24 +163,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     debug,
+                    _marqueur('P1 avant _ResumeCards'),
                     _ResumeCards(data: data),
+                    _marqueur('P2 après _ResumeCards'),
                     const SizedBox(height: 24),
                     Text('Modèles les plus vendus', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
+                    _marqueur('P3 avant _TopModeles'),
                     _TopModeles(topModeles: data.topModeles),
+                    _marqueur('P4 après _TopModeles'),
                     const SizedBox(height: 24),
                     Text('Évolution sur 6 mois', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
+                    _marqueur('P5 avant graphique'),
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: EvolutionMensuelleChart(resumes: data.evolution),
                       ),
                     ),
+                    _marqueur('P6 après graphique'),
                   ],
                 );
               },
             ),
+            _marqueur('P7 après FutureBuilder'),
             const SizedBox(height: 24),
             Text('Accès rapide', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
