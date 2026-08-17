@@ -87,16 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Marqueur de diagnostic temporaire : localise précisément où le rendu
-  /// s'arrête sans qu'aucune erreur ne soit levée (voir _voirJournalErreurs).
-  Widget _marqueur(String label) => Container(
-        width: double.infinity,
-        color: Colors.limeAccent,
-        padding: const EdgeInsets.all(4),
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        child: Text(label, style: const TextStyle(fontSize: 10)),
-      );
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,79 +105,42 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Sonde de diagnostic temporaire (voir _voirJournalErreurs / commit) :
-            // confirme si la liste elle-même s'affiche, indépendamment des données.
-            Container(
-              width: double.infinity,
-              color: Colors.redAccent,
-              padding: const EdgeInsets.all(8),
-              child: const Text('MARQUEUR DIAGNOSTIC — si tu vois ceci, la liste s\'affiche',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 8),
             const MonthSelector(),
             const SizedBox(height: 16),
             FutureBuilder<_HomeData>(
               future: _futureData,
               builder: (context, snapshot) {
-                final debug = Container(
-                  width: double.infinity,
-                  color: Colors.amberAccent,
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    'DEBUG état=${snapshot.connectionState} hasData=${snapshot.hasData} '
-                    'hasError=${snapshot.hasError} erreur=${snapshot.error}',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                );
                 if (snapshot.hasError) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [debug, ErreurChargement(erreur: snapshot.error, onReessayer: _recharger)],
-                  );
+                  return ErreurChargement(erreur: snapshot.error, onReessayer: _recharger);
                 }
                 if (!snapshot.hasData) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      debug,
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                    ],
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: CircularProgressIndicator()),
                   );
                 }
                 final data = snapshot.data!;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    debug,
-                    _marqueur('P1 avant _ResumeCards'),
                     _ResumeCards(data: data),
-                    _marqueur('P2 après _ResumeCards'),
                     const SizedBox(height: 24),
                     Text('Modèles les plus vendus', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    _marqueur('P3 avant _TopModeles'),
                     _TopModeles(topModeles: data.topModeles),
-                    _marqueur('P4 après _TopModeles'),
                     const SizedBox(height: 24),
                     Text('Évolution sur 6 mois', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    _marqueur('P5 avant graphique'),
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: EvolutionMensuelleChart(resumes: data.evolution),
                       ),
                     ),
-                    _marqueur('P6 après graphique'),
                   ],
                 );
               },
             ),
-            _marqueur('P7 après FutureBuilder'),
             const SizedBox(height: 24),
             Text('Accès rapide', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -264,18 +217,24 @@ class _ResumeCards extends StatelessWidget {
     // Rangées de 2 cartes dont la hauteur s'adapte au contenu (plutôt qu'un
     // GridView à ratio fixe qui fait déborder le texte hors de la carte
     // quand une valeur est longue ou que la police système est agrandie).
+    // IntrinsicHeight donne à la Row une hauteur finie basée sur ses enfants :
+    // sans lui, CrossAxisAlignment.stretch hérite de la hauteur non bornée
+    // du ListView ambiant et tente d'étirer les cartes à une hauteur infinie,
+    // ce qui rend tout le reste de l'écran invisible sans lever d'exception.
     return Column(
       children: [
         for (var i = 0; i < cartes.length; i += 2)
           Padding(
             padding: EdgeInsets.only(bottom: i + 2 < cartes.length ? 12 : 0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: cartes[i]),
-                const SizedBox(width: 12),
-                Expanded(child: i + 1 < cartes.length ? cartes[i + 1] : const SizedBox()),
-              ],
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: cartes[i]),
+                  const SizedBox(width: 12),
+                  Expanded(child: i + 1 < cartes.length ? cartes[i + 1] : const SizedBox()),
+                ],
+              ),
             ),
           ),
       ],
