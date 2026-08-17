@@ -105,24 +105,54 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Sonde de diagnostic temporaire (voir _voirJournalErreurs / commit) :
+            // confirme si la liste elle-même s'affiche, indépendamment des données.
+            Container(
+              width: double.infinity,
+              color: Colors.redAccent,
+              padding: const EdgeInsets.all(8),
+              child: const Text('MARQUEUR DIAGNOSTIC — si tu vois ceci, la liste s\'affiche',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 8),
             const MonthSelector(),
             const SizedBox(height: 16),
             FutureBuilder<_HomeData>(
               future: _futureData,
               builder: (context, snapshot) {
+                final debug = Container(
+                  width: double.infinity,
+                  color: Colors.amberAccent,
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    'DEBUG état=${snapshot.connectionState} hasData=${snapshot.hasData} '
+                    'hasError=${snapshot.hasError} erreur=${snapshot.error}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                );
                 if (snapshot.hasError) {
-                  return ErreurChargement(erreur: snapshot.error, onReessayer: _recharger);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [debug, ErreurChargement(erreur: snapshot.error, onReessayer: _recharger)],
+                  );
                 }
                 if (!snapshot.hasData) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(child: CircularProgressIndicator()),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      debug,
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
                   );
                 }
                 final data = snapshot.data!;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    debug,
                     _ResumeCards(data: data),
                     const SizedBox(height: 24),
                     Text('Modèles les plus vendus', style: Theme.of(context).textTheme.titleMedium),
