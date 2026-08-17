@@ -6,6 +6,7 @@ import '../models/modele_vendu.dart';
 import '../models/resume.dart';
 import '../state/app_state.dart';
 import '../utils/date_ranges.dart';
+import '../utils/error_log.dart';
 import '../utils/formatters.dart';
 import '../widgets/erreur_chargement.dart';
 import '../widgets/evolution_mensuelle_chart.dart';
@@ -61,10 +62,44 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Journal des erreurs de mise en page/peinture, invisibles autrement en
+  /// release (voir ErrorLog) — accessible ici pour diagnostiquer un écran
+  /// qui resterait vide sans indice.
+  Future<void> _voirJournalErreurs() async {
+    final texte = await ErrorLog.lire();
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Journal des erreurs'),
+        content: SingleChildScrollView(child: SelectableText(texte, style: const TextStyle(fontSize: 12))),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await ErrorLog.effacer();
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Effacer'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('App Bijoux')),
+      appBar: AppBar(
+        title: const Text('App Bijoux'),
+        actions: [
+          IconButton(
+            tooltip: 'Journal des erreurs',
+            icon: const Icon(Icons.bug_report_outlined),
+            onPressed: _voirJournalErreurs,
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async => _recharger(),
         child: ListView(

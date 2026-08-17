@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +11,7 @@ import 'screens/stock_screen.dart';
 import 'screens/vente_screen.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
+import 'utils/error_log.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +27,19 @@ void main() {
           style: TextStyle(color: Colors.red.shade900, fontSize: 12),
         ),
       );
+  // Les erreurs de mise en page/peinture (contrairement à celles de
+  // construction) ne passent pas par ErrorWidget.builder et restent
+  // totalement invisibles en release sans console — on les consigne donc
+  // dans un journal lisible depuis l'app (voir bouton sur l'écran d'accueil).
+  final gestionnaireOrigine = FlutterError.onError;
+  FlutterError.onError = (details) {
+    ErrorLog.enregistrer('${details.exceptionAsString()}\n${details.stack}');
+    gestionnaireOrigine?.call(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    ErrorLog.enregistrer('$error\n$stack');
+    return true;
+  };
   runApp(const AppBijoux());
 }
 
