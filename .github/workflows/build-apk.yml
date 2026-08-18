@@ -33,9 +33,28 @@ jobs:
           cp pubspec.yaml scaffold/pubspec.yaml
           if [ -d assets ]; then cp -r assets scaffold/assets; fi
 
+      - name: Set app display name
+        # `flutter create` régénère le manifeste à chaque run avec le nom du
+        # dossier scaffold ("scaffold") comme android:label ; on le remplace
+        # ici plutôt que de renommer le dossier (qui sert d'applicationId).
+        # Gère les deux formats possibles selon la version de Flutter : le
+        # nom inline dans le manifeste, ou une indirection vers strings.xml.
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="Stock Flow"/' \
+            scaffold/android/app/src/main/AndroidManifest.xml
+
+          STRINGS="scaffold/android/app/src/main/res/values/strings.xml"
+          if [ -f "$STRINGS" ]; then
+            sed -i 's/<string name="app_name">[^<]*<\/string>/<string name="app_name">Stock Flow<\/string>/' "$STRINGS"
+          fi
+
       - name: Install dependencies
         working-directory: scaffold
         run: flutter pub get
+
+      - name: Generate launcher icon
+        working-directory: scaffold
+        run: dart run flutter_launcher_icons
 
       - name: Configure release signing
         env:
