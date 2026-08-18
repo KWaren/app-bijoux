@@ -22,13 +22,16 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   Future<List<Arrivage>>? _futureArrivages;
   String? _moisCharge;
+  int? _versionChargee;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final mois = context.watch<AppState>().moisSelectionne;
-    if (mois != _moisCharge) {
+    final appState = context.watch<AppState>();
+    final mois = appState.moisSelectionne;
+    if (mois != _moisCharge || appState.dataVersion != _versionChargee) {
       _moisCharge = mois;
+      _versionChargee = appState.dataVersion;
       _recharger();
     }
   }
@@ -147,8 +150,6 @@ class _ArrivageTile extends StatelessWidget {
                 ],
               ),
             if (arrivage.prixVenteMax != null) Text('Prix vente max : ${formatMontant(arrivage.prixVenteMax!)}'),
-            if (arrivage.prixVenteLast != null)
-              Text('Dernier prix vendu : ${formatMontant(arrivage.prixVenteLast!)}'),
             if (arrivage.beneficeEstime != null)
               Wrap(
                 children: [

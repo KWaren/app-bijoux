@@ -29,7 +29,6 @@ class _StockFormScreenState extends State<StockFormScreen> {
   late TextEditingController _prixAchatTotalCtrl;
   late TextEditingController _qteEndommageCtrl;
   late TextEditingController _prixVenteMaxCtrl;
-  late TextEditingController _prixVenteLastCtrl;
   late TextEditingController _prixVenteMinCtrl;
   late DateTime _dateAjout;
   String? _photoPath;
@@ -52,7 +51,6 @@ class _StockFormScreenState extends State<StockFormScreen> {
     _prixAchatTotalCtrl = TextEditingController(text: a != null ? _formatNombre(a.prixAchatTotal) : '');
     _qteEndommageCtrl = TextEditingController(text: a != null ? a.qteEndommage.toString() : '0');
     _prixVenteMaxCtrl = TextEditingController(text: a?.prixVenteMax != null ? _formatNombre(a!.prixVenteMax!) : '');
-    _prixVenteLastCtrl = TextEditingController(text: a?.prixVenteLast != null ? _formatNombre(a!.prixVenteLast!) : '');
     _prixVenteMinCtrl = TextEditingController(text: a?.prixVenteMin != null ? _formatNombre(a!.prixVenteMin!) : '');
     _dateAjout = a != null ? DateTime.parse(a.dateAjout) : _premierJourUtileDuMois(widget.mois);
     _photoPath = a?.photoPath;
@@ -98,9 +96,9 @@ class _StockFormScreenState extends State<StockFormScreen> {
 
   void _recalculer() => setState(() {});
 
-  /// Les prix de vente max/dernier/min sont optionnels : un champ vide est
-  /// valide, mais un texte non vide doit être un nombre (sinon `double.parse`
-  /// plante à l'enregistrement).
+  /// Les prix de vente max/min sont optionnels : un champ vide est valide,
+  /// mais un texte non vide doit être un nombre (sinon `double.parse` plante
+  /// à l'enregistrement).
   String? _validateurMontantOptionnel(String? v) {
     final t = (v ?? '').trim();
     if (t.isEmpty) return null;
@@ -123,7 +121,6 @@ class _StockFormScreenState extends State<StockFormScreen> {
     _prixAchatTotalCtrl.dispose();
     _qteEndommageCtrl.dispose();
     _prixVenteMaxCtrl.dispose();
-    _prixVenteLastCtrl.dispose();
     _prixVenteMinCtrl.dispose();
     super.dispose();
   }
@@ -189,9 +186,6 @@ class _StockFormScreenState extends State<StockFormScreen> {
       prixVenteMax: _prixVenteMaxCtrl.text.trim().isEmpty
           ? null
           : double.parse(_prixVenteMaxCtrl.text.replaceAll(',', '.')),
-      prixVenteLast: _prixVenteLastCtrl.text.trim().isEmpty
-          ? null
-          : double.parse(_prixVenteLastCtrl.text.replaceAll(',', '.')),
       prixVenteMin: _prixVenteMinCtrl.text.trim().isEmpty
           ? null
           : double.parse(_prixVenteMinCtrl.text.replaceAll(',', '.')),
@@ -207,7 +201,9 @@ class _StockFormScreenState extends State<StockFormScreen> {
       // La date choisie peut tomber dans un mois différent de celui affiché à
       // l'écran Stock (ex: arrivage saisi rétroactivement) : sans ça, ce mois
       // n'apparaît jamais dans le sélecteur alors que la donnée est bien enregistrée.
-      context.read<AppState>().ajouterMoisSiAbsent(mois);
+      final appState = context.read<AppState>();
+      appState.ajouterMoisSiAbsent(mois);
+      appState.signalerChangement();
       Navigator.pop(context, true);
     }
   }
@@ -228,7 +224,10 @@ class _StockFormScreenState extends State<StockFormScreen> {
     );
     if (confirme == true && widget.arrivage?.id != null) {
       await DbHelper.instance.deleteArrivage(widget.arrivage!.id!);
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        context.read<AppState>().signalerChangement();
+        Navigator.pop(context, true);
+      }
     }
   }
 
@@ -403,13 +402,6 @@ class _StockFormScreenState extends State<StockFormScreen> {
             TextFormField(
               controller: _prixVenteMaxCtrl,
               decoration: InputDecoration(labelText: 'Prix de vente max ($devise) — optionnel'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: _validateurMontantOptionnel,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _prixVenteLastCtrl,
-              decoration: InputDecoration(labelText: 'Dernier prix vendu ($devise) — optionnel'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: _validateurMontantOptionnel,
             ),

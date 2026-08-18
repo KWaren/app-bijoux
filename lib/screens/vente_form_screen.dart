@@ -161,10 +161,6 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
         note: note,
       ));
 
-      // Met à jour le "dernier prix vendu" du modèle (prix unitaire moyen de cette vente),
-      // sans toucher au reste de la fiche.
-      await DbHelper.instance.updateArrivagePrixVenteLast(_arrivageSelectionne!.id!, prixTotal / qte);
-
       if (_venteACredit) {
         final montantPaye = double.tryParse(_montantPayeCtrl.text.replaceAll(',', '.')) ?? 0;
         final resteAPayer = prixTotal - montantPaye;
@@ -183,7 +179,9 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     if (mounted) {
       // Comme pour le stock : sans ça, une vente enregistrée pour un mois différent
       // de celui affiché à l'écran devient invisible tant qu'on ne le sélectionne pas.
-      context.read<AppState>().ajouterMoisSiAbsent(mois);
+      final appState = context.read<AppState>();
+      appState.ajouterMoisSiAbsent(mois);
+      appState.signalerChangement();
       Navigator.pop(context, true);
     }
   }
@@ -305,7 +303,8 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
                 child: Text(
-                  "Pour gérer la dette éventuellement liée à cette vente, utilise l'écran Résumé.",
+                  "Pour enregistrer un paiement sur la dette éventuellement liée à cette vente, "
+                  "reviens à la liste des ventes et touche l'étiquette « À crédit ».",
                   style: TextStyle(fontStyle: FontStyle.italic),
                 ),
               )

@@ -32,13 +32,18 @@ class _ResumeScreenState extends State<ResumeScreen> {
   bool _sauvegarde = false;
   bool _restauration = false;
   String? _moisVu;
+  int? _versionVue;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final mois = context.watch<AppState>().moisSelectionne;
-    final doitRecharger = _futureResume == null || (_type == _TypePeriode.mois && mois != _moisVu);
+    final appState = context.watch<AppState>();
+    final mois = appState.moisSelectionne;
+    final doitRecharger = _futureResume == null ||
+        (_type == _TypePeriode.mois && mois != _moisVu) ||
+        appState.dataVersion != _versionVue;
     _moisVu = mois;
+    _versionVue = appState.dataVersion;
     if (doitRecharger) _recharger();
   }
 
@@ -195,6 +200,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
       description: descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
       dateDette: dateDuJourIso(),
     ));
+    if (mounted) context.read<AppState>().signalerChangement();
     _recharger();
   }
 
@@ -317,10 +323,14 @@ class _ResumeScreenState extends State<ResumeScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(formatMontant(d.montant), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  Text(
+                                    formatMontant(d.resteAPayer),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
                                   TextButton(
                                     onPressed: () async {
-                                      await DbHelper.instance.updateDetteStatut(d.id!, 'payee');
+                                      await DbHelper.instance.payerDette(d.id!, d.resteAPayer);
+                                      if (mounted) context.read<AppState>().signalerChangement();
                                       _recharger();
                                     },
                                     child: const Text('Marquer payée'),
@@ -359,7 +369,7 @@ class _ResumeDetail extends StatelessWidget {
                       contentPadding: EdgeInsets.zero,
                       title: Text(d.clientNom),
                       subtitle: d.description != null ? Text(d.description!) : null,
-                      trailing: Text(formatMontant(d.montant), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: Text(formatMontant(d.resteAPayer), style: const TextStyle(fontWeight: FontWeight.bold)),
                     ))
                 .toList(),
           ),
@@ -373,7 +383,7 @@ class _ResumeDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalDettesEnCours = dettesEnCours.fold<double>(0, (s, d) => s + d.montant);
+    final totalDettesEnCours = dettesEnCours.fold<double>(0, (s, d) => s + d.resteAPayer);
     final noms = dettesEnCours.map((d) => d.clientNom).toSet().join(', ');
     return Card(
       child: Padding(

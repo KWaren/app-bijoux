@@ -25,6 +25,7 @@ class Vente {
   final String? modeleNom;
   final String? photoPath;
   final double? resteAPayer;
+  final int? detteId;
 
   const Vente({
     this.id,
@@ -38,6 +39,7 @@ class Vente {
     this.modeleNom,
     this.photoPath,
     this.resteAPayer,
+    this.detteId,
   });
 
   factory Vente.fromMap(Map<String, dynamic> map) {
@@ -53,6 +55,7 @@ class Vente {
       modeleNom: map['modele'] as String?,
       photoPath: map['photo_path'] as String?,
       resteAPayer: (map['reste_a_payer'] as num?)?.toDouble(),
+      detteId: map['dette_id'] as int?,
     );
   }
 

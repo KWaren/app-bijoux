@@ -8,9 +8,21 @@ class AppState extends ChangeNotifier {
   bool _prixAchatVisible = false;
   List<String> _moisDisponibles = [];
 
+  /// Incrémenté à chaque changement de données (vente, dette, stock, dépense...)
+  /// pour que les écrans gardés en mémoire par l'`IndexedStack` de la navigation
+  /// (voir `RootShell`) sachent qu'ils doivent recharger au prochain passage,
+  /// même sans changement de mois sélectionné.
+  int _dataVersion = 0;
+
   String get moisSelectionne => _moisSelectionne;
   bool get prixAchatVisible => _prixAchatVisible;
   List<String> get moisDisponibles => _moisDisponibles;
+  int get dataVersion => _dataVersion;
+
+  void signalerChangement() {
+    _dataVersion++;
+    notifyListeners();
+  }
 
   Future<void> chargerMoisDisponibles() async {
     final mois = await DbHelper.instance.getMoisDisponibles();

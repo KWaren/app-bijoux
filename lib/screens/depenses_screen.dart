@@ -139,7 +139,9 @@ class _DepensesScreenState extends State<DepensesScreen> {
       arrivageId: arrivageLie?.id,
     ));
     if (mounted) {
-      context.read<AppState>().ajouterMoisSiAbsent(mois);
+      final appState = context.read<AppState>();
+      appState.ajouterMoisSiAbsent(mois);
+      appState.signalerChangement();
       _recharger();
     }
   }
@@ -147,6 +149,7 @@ class _DepensesScreenState extends State<DepensesScreen> {
   Future<void> _supprimer(Depense d) async {
     if (d.id == null) return;
     await DbHelper.instance.deleteDepense(d.id!);
+    if (mounted) context.read<AppState>().signalerChangement();
     _recharger();
   }
 

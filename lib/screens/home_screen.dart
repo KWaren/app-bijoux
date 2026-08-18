@@ -24,13 +24,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late Future<_HomeData> _futureData;
   String? _moisCharge;
+  int? _versionChargee;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final mois = context.watch<AppState>().moisSelectionne;
-    if (mois != _moisCharge) {
+    final appState = context.watch<AppState>();
+    final mois = appState.moisSelectionne;
+    if (mois != _moisCharge || appState.dataVersion != _versionChargee) {
       _moisCharge = mois;
+      _versionChargee = appState.dataVersion;
       _futureData = _charger(mois);
     }
   }

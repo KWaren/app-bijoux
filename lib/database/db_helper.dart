@@ -37,7 +37,7 @@ class DbHelper {
     final path = join(dbPath, dbFileName);
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE arrivages (
@@ -48,7 +48,6 @@ class DbHelper {
             prix_achat_unitaire REAL NOT NULL,
             qte_endommage INTEGER NOT NULL DEFAULT 0,
             prix_vente_max REAL,
-            prix_vente_last REAL,
             prix_vente_min REAL,
             photo_path TEXT,
             date_ajout TEXT NOT NULL
@@ -83,6 +82,7 @@ class DbHelper {
             client_nom TEXT NOT NULL,
             vente_id INTEGER,
             montant REAL NOT NULL,
+            montant_paye REAL NOT NULL DEFAULT 0,
             description TEXT,
             date_dette TEXT NOT NULL,
             statut TEXT NOT NULL DEFAULT 'en_cours',
@@ -105,6 +105,9 @@ class DbHelper {
           await db.execute('ALTER TABLE ventes ADD COLUMN mode_paiement TEXT');
           await db.execute('ALTER TABLE ventes ADD COLUMN note TEXT');
         }
+        if (oldVersion < 5) {
+          await db.execute('ALTER TABLE dettes ADD COLUMN montant_paye REAL NOT NULL DEFAULT 0');
+        }
       },
     );
   }
@@ -121,13 +124,6 @@ class DbHelper {
   Future<int> updateArrivage(Arrivage a) async {
     final db = await database;
     return db.update('arrivages', a.toMap(), where: 'id = ?', whereArgs: [a.id]);
-  }
-
-  /// Mise à jour ciblée du dernier prix vendu (appelée après une vente), pour ne
-  /// jamais écraser le reste de la fiche avec une copie potentiellement obsolète.
-  Future<void> updateArrivagePrixVenteLast(int id, double prixVenteLast) async {
-    final db = await database;
-    await db.update('arrivages', {'prix_vente_last': prixVenteLast}, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> deleteArrivage(int id) async {
@@ -261,7 +257,8 @@ class DbHelper {
   /// vente comptant).
   static const String _selectVenteAvecReste = '''
     SELECT v.*, a.modele as modele, a.photo_path as photo_path,
-      (SELECT SUM(d.montant) FROM dettes d WHERE d.vente_id = v.id AND d.statut = 'en_cours') as reste_a_payer
+      (SELECT SUM(d.montant - d.montant_paye) FROM dettes d WHERE d.vente_id = v.id AND d.statut = 'en_cours') as reste_a_payer,
+      (SELECT d.id FROM dettes d WHERE d.vente_id = v.id AND d.statut = 'en_cours' LIMIT 1) as dette_id
     FROM ventes v
     JOIN arrivages a ON a.id = v.arrivage_id
   ''';
@@ -335,9 +332,25 @@ class DbHelper {
     return db.insert('dettes', d.toMap());
   }
 
-  Future<void> updateDetteStatut(int id, String statut) async {
+  /// Enregistre un paiement (partiel ou total) sur une dette : le montant se
+  /// cumule à ce qui a déjà été payé, et la dette passe automatiquement à
+  /// "payée" une fois le solde épuisé.
+  Future<void> payerDette(int id, double montantPaye) async {
     final db = await database;
-    await db.update('dettes', {'statut': statut}, where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query('dettes', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return;
+    final dette = Dette.fromMap(rows.first);
+    final nouveauMontantPaye = dette.montantPaye + montantPaye;
+    final solde = dette.montant - nouveauMontantPaye;
+    await db.update(
+      'dettes',
+      {
+        'montant_paye': nouveauMontantPaye,
+        'statut': solde <= 0 ? 'payee' : 'en_cours',
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<void> deleteDette(int id) async {
@@ -353,7 +366,9 @@ class DbHelper {
 
   Future<double> getTotalDettesEnCours() async {
     final db = await database;
-    final result = await db.rawQuery("SELECT COALESCE(SUM(montant), 0) as total FROM dettes WHERE statut = 'en_cours'");
+    final result = await db.rawQuery(
+      "SELECT COALESCE(SUM(montant - montant_paye), 0) as total FROM dettes WHERE statut = 'en_cours'",
+    );
     return (result.first['total'] as num).toDouble();
   }
 

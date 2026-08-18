@@ -6,7 +6,6 @@ class Arrivage {
   final double prixAchatUnitaire;
   final int qteEndommage;
   final double? prixVenteMax;
-  final double? prixVenteLast;
   final double? prixVenteMin;
   final String? photoPath;
   final String dateAjout; // ISO 'YYYY-MM-DD'
@@ -27,7 +26,6 @@ class Arrivage {
     required this.prixAchatUnitaire,
     this.qteEndommage = 0,
     this.prixVenteMax,
-    this.prixVenteLast,
     this.prixVenteMin,
     this.photoPath,
     required this.dateAjout,
@@ -63,7 +61,6 @@ class Arrivage {
     double? prixAchatUnitaire,
     int? qteEndommage,
     double? prixVenteMax,
-    double? prixVenteLast,
     double? prixVenteMin,
     String? photoPath,
     String? dateAjout,
@@ -78,7 +75,6 @@ class Arrivage {
       prixAchatUnitaire: prixAchatUnitaire ?? this.prixAchatUnitaire,
       qteEndommage: qteEndommage ?? this.qteEndommage,
       prixVenteMax: prixVenteMax ?? this.prixVenteMax,
-      prixVenteLast: prixVenteLast ?? this.prixVenteLast,
       prixVenteMin: prixVenteMin ?? this.prixVenteMin,
       photoPath: photoPath ?? this.photoPath,
       dateAjout: dateAjout ?? this.dateAjout,
@@ -96,7 +92,6 @@ class Arrivage {
       prixAchatUnitaire: (map['prix_achat_unitaire'] as num).toDouble(),
       qteEndommage: map['qte_endommage'] as int? ?? 0,
       prixVenteMax: (map['prix_vente_max'] as num?)?.toDouble(),
-      prixVenteLast: (map['prix_vente_last'] as num?)?.toDouble(),
       prixVenteMin: (map['prix_vente_min'] as num?)?.toDouble(),
       photoPath: map['photo_path'] as String?,
       dateAjout: map['date_ajout'] as String,
@@ -114,7 +109,6 @@ class Arrivage {
       'prix_achat_unitaire': prixAchatUnitaire,
       'qte_endommage': qteEndommage,
       'prix_vente_max': prixVenteMax,
-      'prix_vente_last': prixVenteLast,
       'prix_vente_min': prixVenteMin,
       'photo_path': photoPath,
       'date_ajout': dateAjout,
