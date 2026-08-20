@@ -116,7 +116,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
     // En modification, la quantité déjà attribuée à cette vente doit être remise
     // dans le stock disponible avant de vérifier la nouvelle quantité demandée.
     final ancienneQte = _modeEdition ? widget.vente!.qteVendue : 0;
-    final restantDisponible = arrivageAJour == null ? 0 : arrivageAJour.bijouxRestant + ancienneQte;
+    final restantDisponible = arrivageAJour == null ? 0 : arrivageAJour.qteRestante + ancienneQte;
     if (arrivageAJour == null || qte > restantDisponible) {
       if (mounted) {
         setState(() => _enregistrement = false);
@@ -226,7 +226,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
                   children: [
                     ModelePhoto(photoPath: _arrivageSelectionne!.photoPath, taille: 44),
                     const SizedBox(width: 12),
-                    Text('Restant : ${_arrivageSelectionne!.bijouxRestant}'),
+                    Text('Restant : ${_arrivageSelectionne!.qteRestante}'),
                   ],
                 ),
             ],
@@ -374,7 +374,7 @@ class _ChampModele extends StatelessWidget {
                       (a) => ListTile(
                         leading: ModelePhoto(photoPath: a.photoPath, taille: 36),
                         title: Text(a.modele),
-                        subtitle: Text('Restant : ${a.bijouxRestant}'),
+                        subtitle: Text('Restant : ${a.qteRestante}'),
                         onTap: () => onSelectedOption(a),
                       ),
                     )

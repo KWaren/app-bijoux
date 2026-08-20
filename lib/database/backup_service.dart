@@ -52,7 +52,7 @@ class BackupService {
   Future<File> creerSauvegardeManuelle() async {
     final dbFile = File(await _dbPath());
     final backupsDir = await _backupsDir();
-    final fileName = 'sauvegarde_app_bijoux_${_dateTimeStr(DateTime.now())}.db';
+    final fileName = 'sauvegarde_stock_flow_${_dateTimeStr(DateTime.now())}.db';
     final dest = File(join(backupsDir.path, fileName));
     await dbFile.copy(dest.path);
     return dest;
@@ -73,7 +73,7 @@ class BackupService {
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
-        text: 'Sauvegarde App Bijoux du ${_dateStr(DateTime.now())}',
+        text: 'Sauvegarde Stock Flow du ${_dateStr(DateTime.now())}',
       ),
     );
   }

@@ -38,18 +38,18 @@ void main() {
     ErrorLog.enregistrer('$error\n$stack');
     return true;
   };
-  runApp(const AppBijoux());
+  runApp(const StockFlowApp());
 }
 
-class AppBijoux extends StatelessWidget {
-  const AppBijoux({super.key});
+class StockFlowApp extends StatelessWidget {
+  const StockFlowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppState()..chargerMoisDisponibles(),
       child: MaterialApp(
-        title: 'App Bijoux',
+        title: 'Stock Flow',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
         home: const RootShell(),

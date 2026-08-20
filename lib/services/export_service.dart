@@ -89,7 +89,7 @@ class ExportService {
       'Prix total achat',
       'Frais liés',
       'Qté endommagée',
-      'Bijoux restants',
+      'Quantité restante',
     ]);
     for (final a in arrivages) {
       sheet.appendRow([
@@ -100,7 +100,7 @@ class ExportService {
         DoubleCellValue(a.prixAchatTotal),
         DoubleCellValue(a.depensesLiees),
         IntCellValue(a.qteEndommage),
-        IntCellValue(a.bijouxRestant),
+        IntCellValue(a.qteRestante),
       ]);
     }
   }

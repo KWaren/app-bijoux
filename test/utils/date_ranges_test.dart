@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app_bijoux/utils/date_ranges.dart';
+import 'package:stock_flow/utils/date_ranges.dart';
 
 void main() {
   group('rangeJour', () {

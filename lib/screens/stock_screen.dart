@@ -134,7 +134,7 @@ class _ArrivageTile extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Restant : ${arrivage.bijouxRestant} / ${arrivage.quantite}'),
+            Text('Restant : ${arrivage.qteRestante} / ${arrivage.quantite}'),
             if (arrivage.qteEndommage > 0) Text('Endommagé : ${arrivage.qteEndommage}'),
             Wrap(
               children: [

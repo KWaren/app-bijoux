@@ -35,9 +35,9 @@ class Arrivage {
 
   double get prixAchatTotal => quantite * prixAchatUnitaire;
   double get prixEndommage => qteEndommage * prixAchatUnitaire;
-  int get bijouxRestant => quantite - qteEndommage - qteVendue;
-  bool get stockEpuise => bijouxRestant <= 0;
-  bool get stockBas => !stockEpuise && bijouxRestant <= 2;
+  int get qteRestante => quantite - qteEndommage - qteVendue;
+  bool get stockEpuise => qteRestante <= 0;
+  bool get stockBas => !stockEpuise && qteRestante <= 2;
 
   /// Coût total du lot, frais annexes (transport, douane...) inclus.
   double get coutTotalAvecFrais => prixAchatTotal + depensesLiees;
@@ -50,7 +50,7 @@ class Arrivage {
   /// minimum n'est renseigné.
   double? get beneficeEstime {
     if (prixVenteMin == null) return null;
-    return bijouxRestant * (prixVenteMin! - coutUnitaireAvecFrais);
+    return qteRestante * (prixVenteMin! - coutUnitaireAvecFrais);
   }
 
   Arrivage copyWith({

@@ -1,16 +1,16 @@
-# App Bijoux
+# Stock Flow
 
 [![Build APK](https://github.com/KWaren/app-bijoux/actions/workflows/build-apk.yml/badge.svg)](https://github.com/KWaren/app-bijoux/actions/workflows/build-apk.yml)
 
-Application mobile de gestion pour un petit business de bijoux : stock, ventes, dépenses, clients et suivi des dettes — pensée pour remplacer le duo bloc-notes + Excel par un seul outil, utilisable **hors-ligne**.
+Application mobile de gestion pour petit commerce : stock, ventes, dépenses, clients et suivi des dettes — pensée pour remplacer le duo bloc-notes + Excel par un seul outil, utilisable **hors-ligne**.
 
 ## Fonctionnalités
 
-- **Stock / Arrivage** par mois : modèle, quantité achetée, prix total payé pour le lot (prix de gros) → prix unitaire de détail calculé automatiquement, quantité endommagée, prix de vente max/dernier, photo du modèle
-- **Ventes** : choix du modèle → nom du client → date → prix → quantité, avec calcul automatique du stock restant. Le nom du client est enregistré à chaque vente mais il n'y a pas de fiche/historique par client (pas de module Clients séparé)
+- **Stock / Arrivage** par mois : article, quantité achetée, prix total payé pour le lot (prix de gros) → prix unitaire de détail calculé automatiquement, quantité endommagée, prix de vente max/dernier, photo de l'article
+- **Ventes** : choix de l'article → nom du client → date → prix → quantité, avec calcul automatique du stock restant. Le nom du client est enregistré à chaque vente mais il n'y a pas de fiche/historique par client (pas de module Clients séparé)
 - **Autres dépenses** : transport, sachets, frais de retrait...
 - **Résumé automatique** (jour / semaine / mois) : total des achats, total des ventes, dépenses & pertes, bénéfice (+ marge en %), dettes en cours (ajout et suivi centralisés dans cet écran)
-- **Tableau de bord enrichi** : marge en %, bénéfice minimum garanti sur le stock restant (basé sur un prix de vente minimum fixé par modèle, masqué comme le prix d'achat), modèles les plus vendus, évolution des ventes/bénéfices sur 6 mois
+- **Tableau de bord enrichi** : marge en %, bénéfice minimum garanti sur le stock restant (basé sur un prix de vente minimum fixé par article, masqué comme le prix d'achat), articles les plus vendus, évolution des ventes/bénéfices sur 6 mois
 - **Export Excel** du rapport de la période sélectionnée, partageable directement (WhatsApp, mail, Drive...)
 - **Sauvegarde locale automatique** de la base de données à chaque lancement
 - **Prix d'achat masqué par défaut**, pour ne jamais l'afficher par erreur devant un·e client·e
@@ -22,7 +22,7 @@ Application mobile de gestion pour un petit business de bijoux : stock, ventes, 
 - `sqflite` — stockage local SQLite
 - `provider` — gestion d'état
 - `excel` + `share_plus` — export et partage de rapports
-- `image_picker` — photos des modèles
+- `image_picker` — photos des articles
 
 ## Lancer le projet
 
@@ -66,4 +66,4 @@ lib/
 
 ## Licence
 
-Ce projet est distribué sous licence MIT — voir le fichier [LICENSE](LICENSE). Libre à toi de le récupérer, l'adapter et l'utiliser pour ton propre business.
+Ce projet est distribué sous licence MIT — voir le fichier [LICENSE](LICENSE). Libre à toi de le récupérer, l'adapter et l'utiliser pour ton propre commerce.

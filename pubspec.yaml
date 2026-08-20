@@ -1,5 +1,5 @@
-name: app_bijoux
-description: Application de gestion pour business de bijoux (stock, ventes, dépenses)
+name: stock_flow
+description: Application de gestion pour petit commerce (stock, ventes, dépenses)
 publish_to: 'none'
 version: 1.0.0+1
 

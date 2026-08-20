@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app_bijoux/utils/formatters.dart';
+import 'package:stock_flow/utils/formatters.dart';
 
 void main() {
   group('formatMontant', () {
