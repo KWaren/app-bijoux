@@ -180,9 +180,10 @@ class _VenteScreenState extends State<VenteScreen> {
         icon: const Icon(Icons.add_shopping_cart),
         label: const Text('Nouvelle vente'),
         onPressed: () async {
+          final mois = context.read<AppState>().moisSelectionne;
           final cree = await Navigator.push<bool>(
             context,
-            MaterialPageRoute(builder: (_) => const VenteFormScreen()),
+            MaterialPageRoute(builder: (_) => VenteFormScreen(mois: mois)),
           );
           if (cree == true) _recharger();
         },

@@ -13,7 +13,12 @@ import '../widgets/modele_photo.dart';
 class VenteFormScreen extends StatefulWidget {
   final Vente? vente;
 
-  const VenteFormScreen({super.key, this.vente});
+  /// Mois affiché sur l'écran Ventes (format 'YYYY-MM') au moment de la
+  /// création. Sert à proposer une date par défaut cohérente avec le mois
+  /// consulté plutôt que systématiquement la date du jour.
+  final String? mois;
+
+  const VenteFormScreen({super.key, this.vente, this.mois});
 
   @override
   State<VenteFormScreen> createState() => _VenteFormScreenState();
@@ -40,7 +45,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
   final _montantPayeCtrl = TextEditingController();
   late final TextEditingController _noteCtrl;
 
-  List<Arrivage> _stock = [];
+  List<Arrivage> _stockTout = [];
   List<String> _clients = [];
   List<_LigneVenteState> _lignes = [];
   TextEditingController? _clientController;
@@ -52,12 +57,37 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
 
   bool get _modeEdition => widget.vente != null;
 
+  /// Le stock proposé à la vente : uniquement les modèles déjà arrivés à la
+  /// date de la vente (pas de stock préparé à l'avance pour un mois futur).
+  List<Arrivage> get _stock {
+    final dateVenteIso =
+        '${_dateVente.year.toString().padLeft(4, '0')}-${_dateVente.month.toString().padLeft(2, '0')}-${_dateVente.day.toString().padLeft(2, '0')}';
+    final liste = _stockTout.where((a) => a.dateAjout.compareTo(dateVenteIso) <= 0).toList();
+    liste.sort((a, b) => a.modele.compareTo(b.modele));
+    return liste;
+  }
+
+  DateTime _premierJourUtileDuMois(String moisYYYYMM) {
+    final parts = moisYYYYMM.split('-');
+    final annee = int.parse(parts[0]);
+    final mois = int.parse(parts[1]);
+    final maintenant = DateTime.now();
+    if (annee == maintenant.year && mois == maintenant.month) return maintenant;
+    return DateTime(annee, mois, 1);
+  }
+
   @override
   void initState() {
     super.initState();
     final v = widget.vente;
     _noteCtrl = TextEditingController(text: v?.note ?? '');
-    _dateVente = v != null ? DateTime.parse(v.dateVente) : DateTime.now();
+    if (v != null) {
+      _dateVente = DateTime.parse(v.dateVente);
+    } else if (widget.mois != null) {
+      _dateVente = _premierJourUtileDuMois(widget.mois!);
+    } else {
+      _dateVente = DateTime.now();
+    }
     _modePaiement = v?.modePaiement ?? ModePaiement.especes;
     _charger();
   }
@@ -95,7 +125,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
 
     if (!mounted) return;
     setState(() {
-      _stock = stockParId.values.toList()..sort((a, b) => a.modele.compareTo(b.modele));
+      _stockTout = stockParId.values.toList();
       _clients = clients;
       _lignes = lignes;
       _chargement = false;
