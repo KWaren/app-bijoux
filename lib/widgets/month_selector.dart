@@ -17,7 +17,8 @@ class MonthSelector extends StatelessWidget {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            value: valeurActuelle,
+            key: ValueKey(valeurActuelle),
+            initialValue: valeurActuelle,
             decoration: const InputDecoration(labelText: 'Mois'),
             items: moisListe
                 .map((m) => DropdownMenuItem(value: m, child: Text(formatMoisLibelle(m))))

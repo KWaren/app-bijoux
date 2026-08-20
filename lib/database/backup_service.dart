@@ -70,9 +70,11 @@ class BackupService {
 
   Future<void> partagerSauvegarde() async {
     final file = await creerSauvegardeManuelle();
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      text: 'Sauvegarde App Bijoux du ${_dateStr(DateTime.now())}',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Sauvegarde App Bijoux du ${_dateStr(DateTime.now())}',
+      ),
     );
   }
 

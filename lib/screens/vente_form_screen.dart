@@ -280,7 +280,7 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _modePaiement,
+              initialValue: _modePaiement,
               decoration: const InputDecoration(labelText: 'Mode de paiement'),
               items: ModePaiement.libelles.entries
                   .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))

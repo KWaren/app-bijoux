@@ -41,7 +41,9 @@ class ExportService {
 
   Future<void> genererEtPartager(Periode periode) async {
     final file = await genererRapport(periode);
-    await Share.shareXFiles([XFile(file.path)], text: 'Rapport ${periode.libelle}');
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(file.path)], text: 'Rapport ${periode.libelle}'),
+    );
   }
 
   void _entete(Sheet sheet, List<String> colonnes) {
