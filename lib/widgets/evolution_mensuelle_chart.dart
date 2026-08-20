@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/resume.dart';
+import '../theme/app_theme.dart';
 
 /// Petit graphique en barres (ventes vs bénéfice) sur les derniers mois,
 /// construit avec les widgets Flutter de base — aucune dépendance externe.
@@ -25,7 +26,7 @@ class EvolutionMensuelleChart extends StatelessWidget {
           children: [
             _LegendeItem(couleur: colorScheme.primary, label: 'Ventes'),
             const SizedBox(width: 16),
-            _LegendeItem(couleur: Colors.green.shade700, label: 'Bénéfice'),
+            _LegendeItem(couleur: AppTheme.vertSucces, label: 'Bénéfice'),
           ],
         ),
         const SizedBox(height: 12),
@@ -35,7 +36,7 @@ class EvolutionMensuelleChart extends StatelessWidget {
           children: resumes.map((r) {
             final hVentes = (r.totalVentes / maxValeur) * _hauteurMax;
             final hBenefice = (r.benefice.abs() / maxValeur) * _hauteurMax;
-            final couleurBenefice = r.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700;
+            final couleurBenefice = r.benefice >= 0 ? AppTheme.vertSucces : AppTheme.rougeAlerte;
             return Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

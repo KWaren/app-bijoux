@@ -10,6 +10,7 @@ import 'screens/vente_screen.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 import 'utils/error_log.dart';
+import 'widgets/classic_bottom_nav.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,26 +87,14 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _ecrans),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: ClassicBottomNav(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Accueil'),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'Stock',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.add_shopping_cart_outlined),
-            selectedIcon: Icon(Icons.add_shopping_cart),
-            label: 'Vente',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Résumé',
-          ),
+        items: const [
+          ClassicNavItem(icone: Icons.home_outlined, label: 'Accueil'),
+          ClassicNavItem(icone: Icons.inventory_2_outlined, label: 'Stock'),
+          ClassicNavItem(icone: Icons.shopping_bag_outlined, label: 'Ventes'),
+          ClassicNavItem(icone: Icons.bar_chart_outlined, label: 'Résumé'),
         ],
       ),
     );

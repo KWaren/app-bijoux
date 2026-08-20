@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../database/db_helper.dart';
 import '../models/arrivage.dart';
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/erreur_chargement.dart';
 import '../widgets/modele_photo.dart';
@@ -160,8 +161,18 @@ class _ArrivageTile extends StatelessWidget {
           ],
         ),
         trailing: arrivage.stockEpuise
-            ? const Chip(label: Text('Épuisé'))
-            : (arrivage.stockBas ? Chip(label: const Text('Stock bas'), backgroundColor: Colors.orange.shade100) : null),
+            ? Chip(
+                label: const Text('Épuisé'),
+                backgroundColor: AppTheme.epuiseBg,
+                labelStyle: const TextStyle(color: AppTheme.epuiseFg),
+              )
+            : (arrivage.stockBas
+                ? Chip(
+                    label: const Text('Stock bas'),
+                    backgroundColor: AppTheme.stockBasBg,
+                    labelStyle: const TextStyle(color: AppTheme.stockBasFg),
+                  )
+                : null),
         onTap: () async {
           final modifie = await Navigator.push<bool>(
             context,

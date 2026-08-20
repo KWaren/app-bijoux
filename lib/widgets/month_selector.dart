@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
 class MonthSelector extends StatelessWidget {
@@ -16,22 +17,61 @@ class MonthSelector extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: DropdownButtonFormField<String>(
-            key: ValueKey(valeurActuelle),
-            initialValue: valeurActuelle,
-            decoration: const InputDecoration(labelText: 'Mois'),
-            items: moisListe
-                .map((m) => DropdownMenuItem(value: m, child: Text(formatMoisLibelle(m))))
+          child: PopupMenuButton<String>(
+            tooltip: 'Choisir le mois',
+            offset: const Offset(0, 46),
+            itemBuilder: (context) => moisListe
+                .map((m) => PopupMenuItem(value: m, child: Text(formatMoisLibelle(m))))
                 .toList(),
-            onChanged: (valeur) {
-              if (valeur != null) context.read<AppState>().changerMois(valeur);
-            },
+            onSelected: (valeur) => context.read<AppState>().changerMois(valeur),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: AppTheme.ombreDouce,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MOIS',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      Text(
+                        valeurActuelle != null ? formatMoisLibelle(valeurActuelle) : 'Choisir',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const Icon(Icons.expand_more, color: AppTheme.bleuMarine),
+                ],
+              ),
+            ),
           ),
         ),
-        IconButton(
-          tooltip: 'Choisir un autre mois',
-          icon: const Icon(Icons.calendar_month),
-          onPressed: () => _choisirAutreMois(context),
+        const SizedBox(width: 10),
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _choisirAutreMois(context),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: AppTheme.ombreDouce,
+            ),
+            child: const Icon(Icons.calendar_month_outlined, color: AppTheme.bleuMarine, size: 20),
+          ),
         ),
       ],
     );

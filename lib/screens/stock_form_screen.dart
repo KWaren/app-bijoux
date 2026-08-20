@@ -10,6 +10,7 @@ import '../database/db_helper.dart';
 import '../models/arrivage.dart';
 import '../state/app_state.dart';
 import '../utils/formatters.dart';
+import '../widgets/form_section.dart';
 import '../widgets/modele_photo.dart';
 
 class StockFormScreen extends StatefulWidget {
@@ -245,167 +246,189 @@ class _StockFormScreenState extends State<StockFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Center(
-              child: GestureDetector(
-                onTap: _choisirPhoto,
-                child: Stack(
-                  children: [
-                    ModelePhoto(photoPath: _photoPath, taille: 120),
-                    const Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: CircleAvatar(radius: 16, child: Icon(Icons.camera_alt, size: 16)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_modeEdition)
-              TextFormField(
-                controller: _modeleCtrl,
-                decoration: const InputDecoration(labelText: 'Nom du modèle'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
-              )
-            else
-              Autocomplete<({String modele, String? photoPath})>(
-                displayStringForOption: (m) => m.modele,
-                optionsBuilder: (textEditingValue) {
-                  if (textEditingValue.text.isEmpty) return _modelesConnus;
-                  return _modelesConnus.where(
-                    (m) => m.modele.toLowerCase().contains(textEditingValue.text.toLowerCase()),
-                  );
-                },
-                onSelected: (m) {
-                  // Ne reprend la photo que si aucune n'a déjà été choisie pour ce
-                  // nouvel arrivage : la quantité, le prix, etc. restent vierges.
-                  setState(() {
-                    if (_photoPath == null) _photoPath = m.photoPath;
-                  });
-                },
-                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                  _modeleCtrl = controller;
-                  return TextFormField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: const InputDecoration(
-                      labelText: 'Nom du modèle',
-                      helperText: 'Tape pour retrouver un modèle déjà enregistré (nom + photo repris)',
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
-                  );
-                },
-                optionsViewBuilder: (context, onSelectedOption, options) {
-                  final optionsList = options.toList();
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4,
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width - 32,
-                        height: optionsList.length > 4 ? 280 : null,
-                        child: ListView(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: optionsList.length <= 4,
-                          children: optionsList
-                              .map(
-                                (m) => ListTile(
-                                  leading: ModelePhoto(photoPath: m.photoPath, taille: 36),
-                                  title: Text(m.modele),
-                                  onTap: () => onSelectedOption(m),
-                                ),
-                              )
-                              .toList(),
+            FormSection(
+              titre: 'Identification',
+              children: [
+                Center(
+                  child: GestureDetector(
+                    onTap: _choisirPhoto,
+                    child: Stack(
+                      children: [
+                        ModelePhoto(photoPath: _photoPath, taille: 110),
+                        const Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: CircleAvatar(radius: 15, child: Icon(Icons.camera_alt, size: 15)),
                         ),
-                      ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            const SizedBox(height: 12),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text("Date d'arrivage"),
-              subtitle: Text(formatDateAffichage(
-                '${_dateAjout.year.toString().padLeft(4, '0')}-${_dateAjout.month.toString().padLeft(2, '0')}-${_dateAjout.day.toString().padLeft(2, '0')}',
-              )),
-              trailing: const Icon(Icons.calendar_month),
-              onTap: _choisirDate,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_modeEdition)
+                  TextFormField(
+                    controller: _modeleCtrl,
+                    decoration: const InputDecoration(labelText: 'Nom du modèle'),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
+                  )
+                else
+                  Autocomplete<({String modele, String? photoPath})>(
+                    displayStringForOption: (m) => m.modele,
+                    optionsBuilder: (textEditingValue) {
+                      if (textEditingValue.text.isEmpty) return _modelesConnus;
+                      return _modelesConnus.where(
+                        (m) => m.modele.toLowerCase().contains(textEditingValue.text.toLowerCase()),
+                      );
+                    },
+                    onSelected: (m) {
+                      // Ne reprend la photo que si aucune n'a déjà été choisie pour ce
+                      // nouvel arrivage : la quantité, le prix, etc. restent vierges.
+                      setState(() {
+                        if (_photoPath == null) _photoPath = m.photoPath;
+                      });
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      _modeleCtrl = controller;
+                      return TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(
+                          labelText: 'Nom du modèle',
+                          helperText: 'Tape pour retrouver un modèle déjà enregistré (nom + photo repris)',
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelectedOption, options) {
+                      final optionsList = options.toList();
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4,
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width - 32,
+                            height: optionsList.length > 4 ? 280 : null,
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: optionsList.length <= 4,
+                              children: optionsList
+                                  .map(
+                                    (m) => ListTile(
+                                      leading: ModelePhoto(photoPath: m.photoPath, taille: 36),
+                                      title: Text(m.modele),
+                                      onTap: () => onSelectedOption(m),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _quantiteCtrl,
-              decoration: const InputDecoration(labelText: 'Quantité achetée'),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final n = int.tryParse(v ?? '');
-                if (n == null || n <= 0) return 'Nombre invalide';
-                final dejaEcoule = (widget.arrivage?.qteVendue ?? 0) + (int.tryParse(_qteEndommageCtrl.text) ?? 0);
-                if (n < dejaEcoule) return 'Doit être ≥ $dejaEcoule (déjà vendu/endommagé)';
-                return null;
-              },
+            FormSection(
+              titre: 'Arrivage',
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text("Date d'arrivage"),
+                  subtitle: Text(formatDateAffichage(
+                    '${_dateAjout.year.toString().padLeft(4, '0')}-${_dateAjout.month.toString().padLeft(2, '0')}-${_dateAjout.day.toString().padLeft(2, '0')}',
+                  )),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _choisirDate,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _quantiteCtrl,
+                  decoration: const InputDecoration(labelText: 'Quantité achetée'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final n = int.tryParse(v ?? '');
+                    if (n == null || n <= 0) return 'Nombre invalide';
+                    final dejaEcoule =
+                        (widget.arrivage?.qteVendue ?? 0) + (int.tryParse(_qteEndommageCtrl.text) ?? 0);
+                    if (n < dejaEcoule) return 'Doit être ≥ $dejaEcoule (déjà vendu/endommagé)';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _qteEndommageCtrl,
+                  decoration: const InputDecoration(labelText: 'Quantité endommagée'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final n = int.tryParse(v ?? '');
+                    if (n == null || n < 0) return 'Nombre invalide';
+                    final quantite = int.tryParse(_quantiteCtrl.text) ?? 0;
+                    final qteVendue = widget.arrivage?.qteVendue ?? 0;
+                    if (n + qteVendue > quantite) return 'Trop élevé : max ${quantite - qteVendue}';
+                    return null;
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _prixAchatTotalCtrl,
-              decoration: InputDecoration(labelText: "Prix total payé pour le lot — prix de gros ($devise)"),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) =>
-                  (double.tryParse((v ?? '').replaceAll(',', '.')) == null) ? 'Montant invalide' : null,
+            FormSection(
+              titre: "Prix d'achat",
+              children: [
+                TextFormField(
+                  controller: _prixAchatTotalCtrl,
+                  decoration: InputDecoration(labelText: "Prix total payé pour le lot — prix de gros ($devise)"),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) =>
+                      (double.tryParse((v ?? '').replaceAll(',', '.')) == null) ? 'Montant invalide' : null,
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    _prixUnitaireCalcule != null
+                        ? 'Prix unitaire (détail) calculé : ${formatMontant(_prixUnitaireCalcule!)} / pièce'
+                        : 'Prix unitaire (détail) calculé : —',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                  ),
+                ),
+              ],
+            ),
+            FormSection(
+              titre: 'Prix de vente',
+              children: [
+                TextFormField(
+                  controller: _prixVenteMinCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Prix de vente minimum ($devise) — optionnel',
+                    helperText: 'Sert à estimer le bénéfice minimum garanti sur ce modèle',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: _validateurMontantOptionnel,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _prixVenteMaxCtrl,
+                  decoration: InputDecoration(labelText: 'Prix de vente max ($devise) — optionnel'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: _validateurMontantOptionnel,
+                ),
+                if (_beneficeEstimeCalcule != null)
+                  HighlightBox(
+                    icone: Icons.trending_up,
+                    label: 'Bénéfice min. garanti estimé sur le stock restant',
+                    valeur: '${formatMontant(_beneficeEstimeCalcule!)}'
+                        '${_depensesLieesExistantes > 0 ? ' (frais liés de ${formatMontant(_depensesLieesExistantes)} déduits)' : ''}',
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: Text(
+                      'Bénéfice min. garanti estimé : — (quantité, prix d\'achat et prix de vente minimum requis)',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                _prixUnitaireCalcule != null
-                    ? 'Prix unitaire (détail) calculé : ${formatMontant(_prixUnitaireCalcule!)} / pièce'
-                    : 'Prix unitaire (détail) calculé : —',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _qteEndommageCtrl,
-              decoration: const InputDecoration(labelText: 'Quantité endommagée'),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final n = int.tryParse(v ?? '');
-                if (n == null || n < 0) return 'Nombre invalide';
-                final quantite = int.tryParse(_quantiteCtrl.text) ?? 0;
-                final qteVendue = widget.arrivage?.qteVendue ?? 0;
-                if (n + qteVendue > quantite) return 'Trop élevé : max ${quantite - qteVendue}';
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _prixVenteMinCtrl,
-              decoration: InputDecoration(
-                labelText: 'Prix de vente minimum ($devise) — optionnel',
-                helperText: 'Sert à estimer le bénéfice minimum garanti sur ce modèle',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: _validateurMontantOptionnel,
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                _beneficeEstimeCalcule != null
-                    ? 'Bénéfice min. garanti estimé sur le stock restant : ${formatMontant(_beneficeEstimeCalcule!)}'
-                        '${_depensesLieesExistantes > 0 ? ' (frais liés de ${formatMontant(_depensesLieesExistantes)} déduits)' : ''}'
-                    : 'Bénéfice min. garanti estimé : — (quantité, prix d\'achat et prix de vente minimum requis)',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _prixVenteMaxCtrl,
-              decoration: InputDecoration(labelText: 'Prix de vente max ($devise) — optionnel'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: _validateurMontantOptionnel,
-            ),
-            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _enregistrement ? null : _enregistrer,
               child: Text(_enregistrement ? 'Enregistrement...' : 'Enregistrer'),
