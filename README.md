@@ -1,5 +1,7 @@
 # App Bijoux
 
+[![Build APK](https://github.com/KWaren/app-bijoux/actions/workflows/build-apk.yml/badge.svg)](https://github.com/KWaren/app-bijoux/actions/workflows/build-apk.yml)
+
 Application mobile de gestion pour un petit business de bijoux : stock, ventes, dépenses, clients et suivi des dettes — pensée pour remplacer le duo bloc-notes + Excel par un seul outil, utilisable **hors-ligne**.
 
 ## Fonctionnalités
@@ -24,7 +26,10 @@ Application mobile de gestion pour un petit business de bijoux : stock, ventes, 
 
 ## Lancer le projet
 
+Les dossiers `android/`/`ios/` ne sont pas versionnés dans ce repo (ils sont régénérés à chaque build, voir plus bas) : il faut donc d'abord les créer avant de pouvoir lancer ou builder l'app en local.
+
 ```bash
+flutter create --platforms=android --org com.appbijoux.gestion .
 flutter pub get
 flutter run
 ```
@@ -33,11 +38,16 @@ flutter run
 
 Le workflow GitHub Actions (`.github/workflows/build-apk.yml`) génère automatiquement un APK release à chaque push sur `main` (téléchargeable dans les artefacts de l'action), ou manuellement depuis l'onglet **Actions** → **Run workflow**.
 
-Pour générer un APK en local, il faut d'abord ajouter la scaffolding Android (non versionnée dans ce repo) :
+Pour générer un APK en local, après l'étape `flutter create` ci-dessus :
 
 ```bash
-flutter create --platforms=android --org com.appbijoux.gestion .
 flutter build apk --release
+```
+
+## Tests
+
+```bash
+flutter test
 ```
 
 ## Structure du projet
