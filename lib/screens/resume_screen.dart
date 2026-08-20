@@ -8,6 +8,7 @@ import '../models/dette.dart';
 import '../models/resume.dart';
 import '../services/export_service.dart';
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/date_ranges.dart';
 import '../utils/formatters.dart';
 import '../widgets/erreur_chargement.dart';
@@ -228,17 +229,30 @@ class _ResumeScreenState extends State<ResumeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            SegmentedButton<_TypePeriode>(
-              segments: const [
-                ButtonSegment(value: _TypePeriode.jour, label: Text('Jour')),
-                ButtonSegment(value: _TypePeriode.semaine, label: Text('Semaine')),
-                ButtonSegment(value: _TypePeriode.mois, label: Text('Mois')),
-              ],
-              selected: {_type},
-              onSelectionChanged: (s) {
-                setState(() => _type = s.first);
-                _recharger();
-              },
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: AppTheme.ombreDouce,
+              ),
+              child: SegmentedButton<_TypePeriode>(
+                style: const ButtonStyle(
+                  side: WidgetStatePropertyAll(BorderSide.none),
+                  visualDensity: VisualDensity.compact,
+                ),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: _TypePeriode.jour, label: Text('Jour')),
+                  ButtonSegment(value: _TypePeriode.semaine, label: Text('Semaine')),
+                  ButtonSegment(value: _TypePeriode.mois, label: Text('Mois')),
+                ],
+                selected: {_type},
+                onSelectionChanged: (s) {
+                  setState(() => _type = s.first);
+                  _recharger();
+                },
+              ),
             ),
             const SizedBox(height: 16),
             if (_type == _TypePeriode.mois)
@@ -302,7 +316,10 @@ class _ResumeScreenState extends State<ResumeScreen> {
               onPressed: _restauration ? null : _restaurer,
               icon: const Icon(Icons.restore_outlined),
               label: Text(_restauration ? 'Restauration...' : 'Restaurer une sauvegarde'),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.rougeAlerte,
+                side: const BorderSide(color: AppTheme.rougeAlerte, width: 1.5),
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -338,7 +355,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
                               isThreeLine: true,
                               trailing: Text(
                                 formatMontant(d.resteAPayer),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.orangeAlerte),
                               ),
                             ),
                           ))
@@ -407,7 +424,7 @@ class _ResumeDetail extends StatelessWidget {
                   ? '${formatMontant(resume.benefice)} (${resume.margeEnPourcent!.toStringAsFixed(1)} %)'
                   : formatMontant(resume.benefice),
               gras: true,
-              couleur: resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+              couleur: resume.benefice >= 0 ? AppTheme.vertSucces : AppTheme.rougeAlerte,
             ),
             if (dettesEnCours.isNotEmpty)
               InkWell(
@@ -419,10 +436,10 @@ class _ResumeDetail extends StatelessWidget {
                       Expanded(
                         child: Text(
                           'Dettes en cours : ${formatMontant(totalDettesEnCours)}\n$noms',
-                          style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+                          style: const TextStyle(color: AppTheme.creditFg, fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
-                      Icon(Icons.chevron_right, size: 18, color: Colors.orange.shade900),
+                      const Icon(Icons.chevron_right, size: 18, color: AppTheme.creditFg),
                     ],
                   ),
                 ),

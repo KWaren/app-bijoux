@@ -5,6 +5,7 @@ import '../database/db_helper.dart';
 import '../models/modele_vendu.dart';
 import '../models/resume.dart';
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/date_ranges.dart';
 import '../utils/error_log.dart';
 import '../utils/formatters.dart';
@@ -186,7 +187,10 @@ class _ResumeCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cartes = [
+    // Les 4 premières cartes s'affichent par paires ; la dernière (bénéfice
+    // potentiel, valeur souvent longue une fois démasquée) occupe toute la
+    // largeur plutôt que de partager une rangée à moitié vide.
+    final cartesPaires = [
       _StatCard(
         label: 'Ventes du mois',
         valeur: formatMontant(data.resume.totalVentes),
@@ -198,25 +202,25 @@ class _ResumeCards extends StatelessWidget {
             ? '${formatMontant(data.resume.benefice)}\n(${data.resume.margeEnPourcent!.toStringAsFixed(1)} %)'
             : formatMontant(data.resume.benefice),
         icone: Icons.trending_up,
-        couleur: data.resume.benefice >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+        couleur: data.resume.benefice >= 0 ? AppTheme.vertSucces : AppTheme.rougeAlerte,
       ),
       _StatCard(
         label: 'Modèles en stock bas',
         valeur: '${data.nbStockBas}',
         icone: Icons.warning_amber_rounded,
-        couleur: data.nbStockBas > 0 ? Colors.orange.shade800 : null,
+        couleur: data.nbStockBas > 0 ? AppTheme.orangeAlerte : null,
       ),
       _StatCard(
         label: 'Dettes en cours',
         valeur: formatMontant(data.dettesEnCours),
         icone: Icons.receipt_long,
       ),
-      _StatCard(
-        label: 'Bénéfice min. garanti sur le stock restant',
-        icone: Icons.savings_outlined,
-        valeurMasquee: data.beneficePotentielRestant,
-      ),
     ];
+    final cartePleineLargeur = _StatCard(
+      label: 'Bénéfice min. garanti sur le stock restant',
+      icone: Icons.savings_outlined,
+      valeurMasquee: data.beneficePotentielRestant,
+    );
     // Rangées de 2 cartes dont la hauteur s'adapte au contenu (plutôt qu'un
     // GridView à ratio fixe qui fait déborder le texte hors de la carte
     // quand une valeur est longue ou que la police système est agrandie).
@@ -226,20 +230,21 @@ class _ResumeCards extends StatelessWidget {
     // ce qui rend tout le reste de l'écran invisible sans lever d'exception.
     return Column(
       children: [
-        for (var i = 0; i < cartes.length; i += 2)
+        for (var i = 0; i < cartesPaires.length; i += 2)
           Padding(
-            padding: EdgeInsets.only(bottom: i + 2 < cartes.length ? 12 : 0),
+            padding: const EdgeInsets.only(bottom: 12),
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: cartes[i]),
+                  Expanded(child: cartesPaires[i]),
                   const SizedBox(width: 12),
-                  Expanded(child: i + 1 < cartes.length ? cartes[i + 1] : const SizedBox()),
+                  Expanded(child: i + 1 < cartesPaires.length ? cartesPaires[i + 1] : const SizedBox()),
                 ],
               ),
             ),
           ),
+        cartePleineLargeur,
       ],
     );
   }

@@ -7,7 +7,9 @@ import '../models/dette.dart';
 import '../models/vente.dart';
 import '../models/vente_ligne.dart';
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
+import '../widgets/form_section.dart';
 import '../widgets/modele_photo.dart';
 
 class VenteFormScreen extends StatefulWidget {
@@ -331,84 +333,89 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
                 alignment: Alignment.centerRight,
                 child: Text(
                   'Total : ${formatMontant(_prixTotal)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.bleuMarine),
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            Autocomplete<String>(
-              initialValue: TextEditingValue(text: widget.vente?.clientNom ?? ''),
-              optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
-                return _clients.where(
-                  (c) => c.toLowerCase().contains(textEditingValue.text.toLowerCase()),
-                );
-              },
-              fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-                _clientController = controller;
-                return TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(labelText: 'Nom du client'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Date de la vente'),
-              subtitle: Text(formatDateAffichage(
-                '${_dateVente.year.toString().padLeft(4, '0')}-${_dateVente.month.toString().padLeft(2, '0')}-${_dateVente.day.toString().padLeft(2, '0')}',
-              )),
-              trailing: const Icon(Icons.calendar_month),
-              onTap: _choisirDate,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _modePaiement,
-              decoration: const InputDecoration(labelText: 'Mode de paiement'),
-              items: ModePaiement.libelles.entries
-                  .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _modePaiement = v);
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _noteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Note (optionnel)',
-                alignLabelWithHint: true,
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 12),
-            if (_modeEdition)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  "Pour enregistrer un paiement sur la dette éventuellement liée à cette vente, "
-                  "reviens à la liste des ventes et touche l'étiquette « À crédit ».",
-                  style: TextStyle(fontStyle: FontStyle.italic),
+            const SizedBox(height: 4),
+            FormSection(
+              titre: 'Client & détails',
+              children: [
+                Autocomplete<String>(
+                  initialValue: TextEditingValue(text: widget.vente?.clientNom ?? ''),
+                  optionsBuilder: (textEditingValue) {
+                    if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
+                    return _clients.where(
+                      (c) => c.toLowerCase().contains(textEditingValue.text.toLowerCase()),
+                    );
+                  },
+                  fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                    _clientController = controller;
+                    return TextFormField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: const InputDecoration(labelText: 'Nom du client'),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null,
+                    );
+                  },
                 ),
-              )
-            else ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Vente à crédit / paiement partiel'),
-                value: _venteACredit,
-                onChanged: (v) => setState(() => _venteACredit = v),
-              ),
-              if (_venteACredit)
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Date de la vente'),
+                  subtitle: Text(formatDateAffichage(
+                    '${_dateVente.year.toString().padLeft(4, '0')}-${_dateVente.month.toString().padLeft(2, '0')}-${_dateVente.day.toString().padLeft(2, '0')}',
+                  )),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _choisirDate,
+                ),
+                const SizedBox(height: 4),
+                DropdownButtonFormField<String>(
+                  initialValue: _modePaiement,
+                  decoration: const InputDecoration(labelText: 'Mode de paiement'),
+                  items: ModePaiement.libelles.entries
+                      .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _modePaiement = v);
+                  },
+                ),
+                const SizedBox(height: 12),
                 TextFormField(
-                  controller: _montantPayeCtrl,
-                  decoration: InputDecoration(labelText: 'Montant payé maintenant ($devise)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  controller: _noteCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (optionnel)',
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 3,
                 ),
-            ],
-            const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                if (_modeEdition)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      "Pour enregistrer un paiement sur la dette éventuellement liée à cette vente, "
+                      "reviens à la liste des ventes et touche l'étiquette « À crédit ».",
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  )
+                else ...[
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Vente à crédit / paiement partiel'),
+                    value: _venteACredit,
+                    onChanged: (v) => setState(() => _venteACredit = v),
+                  ),
+                  if (_venteACredit)
+                    TextFormField(
+                      controller: _montantPayeCtrl,
+                      decoration: InputDecoration(labelText: 'Montant payé maintenant ($devise)'),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
             ElevatedButton(
               onPressed: (_enregistrement || aucunStock) ? null : _valider,
               child: Text(_enregistrement ? 'Enregistrement...' : 'Valider la vente'),

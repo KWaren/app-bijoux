@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../database/db_helper.dart';
 import '../models/vente.dart';
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/date_ranges.dart';
 import '../utils/formatters.dart';
 import '../widgets/erreur_chargement.dart';
@@ -125,20 +126,24 @@ class _VenteScreenState extends State<VenteScreen> {
                                   borderRadius: BorderRadius.circular(4),
                                   onTap: () => _payerDette(v),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.orange.shade100,
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: AppTheme.creditBg,
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
                                           'À crédit · reste ${formatMontant(v.resteAPayer!)}',
-                                          style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                                          style: const TextStyle(
+                                            color: AppTheme.creditFg,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                         const SizedBox(width: 4),
-                                        Icon(Icons.payments_outlined, size: 14, color: Colors.orange.shade900),
+                                        const Icon(Icons.payments_outlined, size: 14, color: AppTheme.creditFg),
                                       ],
                                     ),
                                   ),
@@ -152,7 +157,7 @@ class _VenteScreenState extends State<VenteScreen> {
                           children: [
                             Text(
                               formatMontant(v.prixVenteTotal),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.bleuMarine),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline, size: 20),

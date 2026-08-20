@@ -5,6 +5,7 @@ import '../database/db_helper.dart';
 import '../models/arrivage.dart';
 import '../models/depense.dart';
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/month_selector.dart';
 
@@ -200,7 +201,10 @@ class _DepensesScreenState extends State<DepensesScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(formatMontant(d.cout)),
+                                  Text(
+                                    formatMontant(d.cout),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.rougeAlerte),
+                                  ),
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline, size: 20),
                                     onPressed: () => _supprimer(d),
