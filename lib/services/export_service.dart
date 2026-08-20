@@ -68,15 +68,17 @@ class ExportService {
   }
 
   void _remplirVentes(Sheet sheet, List<Vente> ventes) {
-    _entete(sheet, ['Date', 'Modèle', 'Client', 'Quantité', 'Prix de vente total']);
+    _entete(sheet, ['Date', 'Modèle', 'Client', 'Quantité', 'Prix de vente']);
     for (final v in ventes) {
-      sheet.appendRow([
-        TextCellValue(formatDateAffichage(v.dateVente)),
-        TextCellValue(v.modeleNom ?? ''),
-        TextCellValue(v.clientNom),
-        IntCellValue(v.qteVendue),
-        DoubleCellValue(v.prixVenteTotal),
-      ]);
+      for (final ligne in v.lignes) {
+        sheet.appendRow([
+          TextCellValue(formatDateAffichage(v.dateVente)),
+          TextCellValue(ligne.modeleNom ?? ''),
+          TextCellValue(v.clientNom),
+          IntCellValue(ligne.qteVendue),
+          DoubleCellValue(ligne.prixLigne),
+        ]);
+      }
     }
   }
 

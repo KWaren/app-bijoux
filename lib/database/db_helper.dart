@@ -7,6 +7,7 @@ import '../models/dette.dart';
 import '../models/modele_vendu.dart';
 import '../models/resume.dart';
 import '../models/vente.dart';
+import '../models/vente_ligne.dart';
 import '../utils/date_ranges.dart';
 
 class DbHelper {
@@ -37,7 +38,7 @@ class DbHelper {
     final path = join(dbPath, dbFileName);
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE arrivages (
@@ -56,13 +57,21 @@ class DbHelper {
         await db.execute('''
           CREATE TABLE ventes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            arrivage_id INTEGER NOT NULL,
             client_nom TEXT NOT NULL,
             date_vente TEXT NOT NULL,
-            qte_vendue INTEGER NOT NULL,
             prix_vente_total REAL NOT NULL,
             mode_paiement TEXT,
-            note TEXT,
+            note TEXT
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE ventes_lignes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vente_id INTEGER NOT NULL,
+            arrivage_id INTEGER NOT NULL,
+            qte_vendue INTEGER NOT NULL,
+            prix_ligne REAL NOT NULL,
+            FOREIGN KEY (vente_id) REFERENCES ventes(id),
             FOREIGN KEY (arrivage_id) REFERENCES arrivages(id)
           )
         ''');
@@ -89,7 +98,8 @@ class DbHelper {
             FOREIGN KEY (vente_id) REFERENCES ventes(id)
           )
         ''');
-        await db.execute('CREATE INDEX idx_ventes_arrivage ON ventes(arrivage_id)');
+        await db.execute('CREATE INDEX idx_ventes_lignes_vente ON ventes_lignes(vente_id)');
+        await db.execute('CREATE INDEX idx_ventes_lignes_arrivage ON ventes_lignes(arrivage_id)');
         await db.execute('CREATE INDEX idx_ventes_date ON ventes(date_vente)');
         await db.execute('CREATE INDEX idx_arrivages_mois ON arrivages(mois)');
         await db.execute('CREATE INDEX idx_depenses_mois ON depenses(mois)');
@@ -107,6 +117,47 @@ class DbHelper {
         }
         if (oldVersion < 5) {
           await db.execute('ALTER TABLE dettes ADD COLUMN montant_paye REAL NOT NULL DEFAULT 0');
+        }
+        if (oldVersion < 6) {
+          // Passage d'une vente "1 modèle" (arrivage_id/qte_vendue sur `ventes`) à une
+          // vente "en-tête + lignes" (une vente peut désormais porter plusieurs modèles).
+          // Chaque vente existante devient un en-tête + exactement 1 ligne : aucune donnée perdue.
+          await db.execute('''
+            CREATE TABLE ventes_lignes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              vente_id INTEGER NOT NULL,
+              arrivage_id INTEGER NOT NULL,
+              qte_vendue INTEGER NOT NULL,
+              prix_ligne REAL NOT NULL,
+              FOREIGN KEY (vente_id) REFERENCES ventes(id),
+              FOREIGN KEY (arrivage_id) REFERENCES arrivages(id)
+            )
+          ''');
+          await db.execute('''
+            INSERT INTO ventes_lignes (vente_id, arrivage_id, qte_vendue, prix_ligne)
+            SELECT id, arrivage_id, qte_vendue, prix_vente_total FROM ventes
+          ''');
+          // SQLite (embarqué dans sqflite) ne supporte pas toujours DROP COLUMN de façon
+          // fiable : on reconstruit `ventes` sans arrivage_id/qte_vendue plutôt que d'altérer.
+          await db.execute('ALTER TABLE ventes RENAME TO ventes_old');
+          await db.execute('''
+            CREATE TABLE ventes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              client_nom TEXT NOT NULL,
+              date_vente TEXT NOT NULL,
+              prix_vente_total REAL NOT NULL,
+              mode_paiement TEXT,
+              note TEXT
+            )
+          ''');
+          await db.execute('''
+            INSERT INTO ventes (id, client_nom, date_vente, prix_vente_total, mode_paiement, note)
+            SELECT id, client_nom, date_vente, prix_vente_total, mode_paiement, note FROM ventes_old
+          ''');
+          await db.execute('DROP TABLE ventes_old');
+          await db.execute('CREATE INDEX idx_ventes_lignes_vente ON ventes_lignes(vente_id)');
+          await db.execute('CREATE INDEX idx_ventes_lignes_arrivage ON ventes_lignes(arrivage_id)');
+          await db.execute('CREATE INDEX idx_ventes_date ON ventes(date_vente)');
         }
       },
     );
@@ -126,23 +177,39 @@ class DbHelper {
     return db.update('arrivages', a.toMap(), where: 'id = ?', whereArgs: [a.id]);
   }
 
+  /// Supprime un arrivage. Les lignes de vente qui le référencent sont retirées ;
+  /// si une vente se retrouve sans aucune ligne restante (elle ne portait que sur
+  /// cet arrivage), son en-tête et sa dette éventuelle sont supprimés avec elle.
+  /// Une vente multi-modèles qui a aussi d'autres lignes survit, allégée de celle-ci.
   Future<void> deleteArrivage(int id) async {
     final db = await database;
-    final ventes = await db.query('ventes', columns: ['id'], where: 'arrivage_id = ?', whereArgs: [id]);
-    for (final v in ventes) {
-      await db.delete('dettes', where: 'vente_id = ?', whereArgs: [v['id']]);
-    }
-    await db.delete('ventes', where: 'arrivage_id = ?', whereArgs: [id]);
-    // Les dépenses liées restent (l'argent a bien été dépensé), seul le lien est retiré.
-    await db.update('depenses', {'arrivage_id': null}, where: 'arrivage_id = ?', whereArgs: [id]);
-    await db.delete('arrivages', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      final venteIdsRows = await txn.rawQuery(
+        'SELECT DISTINCT vente_id FROM ventes_lignes WHERE arrivage_id = ?',
+        [id],
+      );
+      await txn.delete('ventes_lignes', where: 'arrivage_id = ?', whereArgs: [id]);
+      for (final row in venteIdsRows) {
+        final venteId = row['vente_id'] as int;
+        final restantes = Sqflite.firstIntValue(
+          await txn.rawQuery('SELECT COUNT(*) FROM ventes_lignes WHERE vente_id = ?', [venteId]),
+        );
+        if (restantes == 0) {
+          await txn.delete('dettes', where: 'vente_id = ?', whereArgs: [venteId]);
+          await txn.delete('ventes', where: 'id = ?', whereArgs: [venteId]);
+        }
+      }
+      // Les dépenses liées restent (l'argent a bien été dépensé), seul le lien est retiré.
+      await txn.update('depenses', {'arrivage_id': null}, where: 'arrivage_id = ?', whereArgs: [id]);
+      await txn.delete('arrivages', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   /// Sous-requêtes (plutôt que LEFT JOIN + GROUP BY) pour agréger séparément
   /// ventes et dépenses sans effet de fan-out entre les deux jointures.
   static const String _selectArrivageAvecAgregats = '''
     SELECT a.*,
-      COALESCE((SELECT SUM(v.qte_vendue) FROM ventes v WHERE v.arrivage_id = a.id), 0) as qte_vendue,
+      COALESCE((SELECT SUM(vl.qte_vendue) FROM ventes_lignes vl WHERE vl.arrivage_id = a.id), 0) as qte_vendue,
       COALESCE((SELECT SUM(d.cout) FROM depenses d WHERE d.arrivage_id = a.id), 0) as depenses_liees
     FROM arrivages a
   ''';
@@ -164,7 +231,7 @@ class DbHelper {
     final rows = await db.rawQuery('''
       $_selectArrivageAvecAgregats
       WHERE (a.quantite - a.qte_endommage -
-        COALESCE((SELECT SUM(v.qte_vendue) FROM ventes v WHERE v.arrivage_id = a.id), 0)) > 0
+        COALESCE((SELECT SUM(vl.qte_vendue) FROM ventes_lignes vl WHERE vl.arrivage_id = a.id), 0)) > 0
       ORDER BY a.modele ASC
     ''');
     return rows.map(Arrivage.fromMap).toList();
@@ -236,32 +303,66 @@ class DbHelper {
   // Ventes
   // ---------------------------------------------------------------------
 
-  Future<int> insertVente(Vente v) async {
+  Future<int> insertVente(Vente v, List<VenteLigne> lignes) async {
     final db = await database;
-    return db.insert('ventes', v.toMap());
+    return db.transaction((txn) async {
+      final venteId = await txn.insert('ventes', v.toMap());
+      for (final ligne in lignes) {
+        await txn.insert('ventes_lignes', ligne.copyWith(venteId: venteId).toMap());
+      }
+      return venteId;
+    });
   }
 
-  Future<void> updateVente(Vente v) async {
+  Future<void> updateVente(Vente v, List<VenteLigne> lignes) async {
     final db = await database;
-    await db.update('ventes', v.toMap(), where: 'id = ?', whereArgs: [v.id]);
+    await db.transaction((txn) async {
+      await txn.update('ventes', v.toMap(), where: 'id = ?', whereArgs: [v.id]);
+      await txn.delete('ventes_lignes', where: 'vente_id = ?', whereArgs: [v.id]);
+      for (final ligne in lignes) {
+        await txn.insert('ventes_lignes', ligne.copyWith(venteId: v.id).toMap());
+      }
+    });
   }
 
   Future<void> deleteVente(int id) async {
     final db = await database;
-    await db.delete('dettes', where: 'vente_id = ?', whereArgs: [id]);
-    await db.delete('ventes', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.delete('ventes_lignes', where: 'vente_id = ?', whereArgs: [id]);
+      await txn.delete('dettes', where: 'vente_id = ?', whereArgs: [id]);
+      await txn.delete('ventes', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   /// Sous-requête pour indiquer, sans recharger tous les objets `Dette`, le
   /// reste à payer encore en cours pour chaque vente (`null`/0 si soldée ou
   /// vente comptant).
   static const String _selectVenteAvecReste = '''
-    SELECT v.*, a.modele as modele, a.photo_path as photo_path,
+    SELECT v.*,
       (SELECT SUM(d.montant - d.montant_paye) FROM dettes d WHERE d.vente_id = v.id AND d.statut = 'en_cours') as reste_a_payer,
       (SELECT d.id FROM dettes d WHERE d.vente_id = v.id AND d.statut = 'en_cours' LIMIT 1) as dette_id
     FROM ventes v
-    JOIN arrivages a ON a.id = v.arrivage_id
   ''';
+
+  /// Récupère les lignes (avec modèle/photo joints) des ventes données, groupées par vente.
+  Future<Map<int, List<VenteLigne>>> _lignesParVente(List<int> venteIds) async {
+    if (venteIds.isEmpty) return {};
+    final db = await database;
+    final placeholders = List.filled(venteIds.length, '?').join(',');
+    final rows = await db.rawQuery('''
+      SELECT vl.*, a.modele as modele, a.photo_path as photo_path
+      FROM ventes_lignes vl
+      JOIN arrivages a ON a.id = vl.arrivage_id
+      WHERE vl.vente_id IN ($placeholders)
+      ORDER BY vl.id ASC
+    ''', venteIds);
+    final resultat = <int, List<VenteLigne>>{};
+    for (final row in rows) {
+      final ligne = VenteLigne.fromMap(row);
+      resultat.putIfAbsent(ligne.venteId!, () => []).add(ligne);
+    }
+    return resultat;
+  }
 
   Future<List<Vente>> getVentesByPeriode(DateTime debut, DateTime fin) async {
     final db = await database;
@@ -270,19 +371,20 @@ class DbHelper {
       WHERE v.date_vente BETWEEN ? AND ?
       ORDER BY v.date_vente DESC, v.id DESC
     ''', [_fmt(debut), _fmt(fin)]);
-    return rows.map(Vente.fromMap).toList();
+    final lignesParVente = await _lignesParVente(rows.map((r) => r['id'] as int).toList());
+    return rows.map((r) => Vente.fromMap(r, lignes: lignesParVente[r['id']] ?? [])).toList();
   }
 
   Future<List<Vente>> getVentesRecentes({int limit = 20}) async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT v.*, a.modele as modele, a.photo_path as photo_path
+      SELECT v.*
       FROM ventes v
-      JOIN arrivages a ON a.id = v.arrivage_id
       ORDER BY v.date_vente DESC, v.id DESC
       LIMIT ?
     ''', [limit]);
-    return rows.map(Vente.fromMap).toList();
+    final lignesParVente = await _lignesParVente(rows.map((r) => r['id'] as int).toList());
+    return rows.map((r) => Vente.fromMap(r, lignes: lignesParVente[r['id']] ?? [])).toList();
   }
 
   // ---------------------------------------------------------------------
@@ -407,14 +509,15 @@ class DbHelper {
     // même si le stock n'est pas encore vendu, et l'inverse le mois suivant.
     final achatRows = await db.rawQuery('''
       SELECT COALESCE(SUM(
-        v.qte_vendue * (
+        vl.qte_vendue * (
           (a.quantite * a.prix_achat_unitaire +
             COALESCE((SELECT SUM(d.cout) FROM depenses d WHERE d.arrivage_id = a.id), 0)
           ) / a.quantite
         )
       ), 0) as total
-      FROM ventes v
-      JOIN arrivages a ON a.id = v.arrivage_id
+      FROM ventes_lignes vl
+      JOIN arrivages a ON a.id = vl.arrivage_id
+      JOIN ventes v ON v.id = vl.vente_id
       WHERE v.date_vente BETWEEN ? AND ?
     ''', [debutStr, finStr]);
     final pertesRows = await db.rawQuery(
@@ -461,9 +564,10 @@ class DbHelper {
   Future<List<ModeleVendu>> getTopModeles(DateTime debut, DateTime fin, {int limit = 5}) async {
     final db = await database;
     final rows = await db.rawQuery('''
-      SELECT a.modele as modele, SUM(v.qte_vendue) as qte, SUM(v.prix_vente_total) as ca
-      FROM ventes v
-      JOIN arrivages a ON a.id = v.arrivage_id
+      SELECT a.modele as modele, SUM(vl.qte_vendue) as qte, SUM(vl.prix_ligne) as ca
+      FROM ventes_lignes vl
+      JOIN arrivages a ON a.id = vl.arrivage_id
+      JOIN ventes v ON v.id = vl.vente_id
       WHERE v.date_vente BETWEEN ? AND ?
       GROUP BY a.modele
       ORDER BY qte DESC

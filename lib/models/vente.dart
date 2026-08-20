@@ -1,3 +1,5 @@
+import 'vente_ligne.dart';
+
 /// Valeurs possibles de [Vente.modePaiement].
 class ModePaiement {
   static const especes = 'especes';
@@ -13,47 +15,47 @@ class ModePaiement {
 
 class Vente {
   final int? id;
-  final int arrivageId;
   final String clientNom;
   final String dateVente; // ISO 'YYYY-MM-DD'
-  final int qteVendue;
   final double prixVenteTotal;
   final String? modePaiement;
   final String? note;
 
-  /// Champs alimentés par jointure avec `arrivages`/`dettes` à la lecture (jamais stockés ici).
-  final String? modeleNom;
-  final String? photoPath;
+  /// Une vente peut porter sur plusieurs modèles. Alimenté par une requête
+  /// séparée à la lecture (jamais stocké tel quel sur l'en-tête `ventes`).
+  final List<VenteLigne> lignes;
+
+  /// Champs alimentés par jointure avec `dettes` à la lecture (jamais stockés ici).
   final double? resteAPayer;
   final int? detteId;
 
   const Vente({
     this.id,
-    required this.arrivageId,
     required this.clientNom,
     required this.dateVente,
-    required this.qteVendue,
     required this.prixVenteTotal,
     this.modePaiement,
     this.note,
-    this.modeleNom,
-    this.photoPath,
+    this.lignes = const [],
     this.resteAPayer,
     this.detteId,
   });
 
-  factory Vente.fromMap(Map<String, dynamic> map) {
+  /// Quantité totale vendue, toutes lignes confondues.
+  int get qteVendueTotal => lignes.fold(0, (somme, l) => somme + l.qteVendue);
+
+  /// Résumé lisible des modèles vendus, ex. "Bague X (2), Collier Y (1)".
+  String get modelesResume => lignes.map((l) => '${l.modeleNom ?? ''} (${l.qteVendue})').join(', ');
+
+  factory Vente.fromMap(Map<String, dynamic> map, {List<VenteLigne> lignes = const []}) {
     return Vente(
       id: map['id'] as int?,
-      arrivageId: map['arrivage_id'] as int,
       clientNom: map['client_nom'] as String,
       dateVente: map['date_vente'] as String,
-      qteVendue: map['qte_vendue'] as int,
       prixVenteTotal: (map['prix_vente_total'] as num).toDouble(),
       modePaiement: map['mode_paiement'] as String?,
       note: map['note'] as String?,
-      modeleNom: map['modele'] as String?,
-      photoPath: map['photo_path'] as String?,
+      lignes: lignes,
       resteAPayer: (map['reste_a_payer'] as num?)?.toDouble(),
       detteId: map['dette_id'] as int?,
     );
@@ -62,10 +64,8 @@ class Vente {
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
-      'arrivage_id': arrivageId,
       'client_nom': clientNom,
       'date_vente': dateVente,
-      'qte_vendue': qteVendue,
       'prix_vente_total': prixVenteTotal,
       'mode_paiement': modePaiement,
       'note': note,

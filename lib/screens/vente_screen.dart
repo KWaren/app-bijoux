@@ -107,14 +107,17 @@ class _VenteScreenState extends State<VenteScreen> {
                   itemBuilder: (context, index) {
                     final v = ventes[index];
                     final aDette = v.resteAPayer != null && v.resteAPayer! > 0;
+                    final unSeulModele = v.lignes.length == 1;
+                    final titreModele = unSeulModele ? (v.lignes.first.modeleNom ?? '') : '${v.lignes.length} modèles';
                     return Card(
                       child: ListTile(
-                        leading: ModelePhoto(photoPath: v.photoPath, taille: 48),
-                        title: Text('${v.modeleNom ?? ''} — ${v.clientNom}'),
+                        leading: ModelePhoto(photoPath: v.lignes.isEmpty ? null : v.lignes.first.photoPath, taille: 48),
+                        title: Text('$titreModele — ${v.clientNom}'),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendue}'),
+                            if (!unSeulModele) Text(v.modelesResume),
+                            Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendueTotal}'),
                             if (aDette)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
@@ -143,7 +146,7 @@ class _VenteScreenState extends State<VenteScreen> {
                               ),
                           ],
                         ),
-                        isThreeLine: aDette,
+                        isThreeLine: aDette || !unSeulModele,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
