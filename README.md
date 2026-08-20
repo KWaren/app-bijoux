@@ -36,7 +36,16 @@ flutter run
 
 ## Générer un APK
 
-Le workflow GitHub Actions (`.github/workflows/build-apk.yml`) génère automatiquement un APK release à chaque push sur `main` (téléchargeable dans les artefacts de l'action), ou manuellement depuis l'onglet **Actions** → **Run workflow**.
+Le workflow GitHub Actions (`.github/workflows/build-apk.yml`) génère automatiquement un APK release à chaque push sur `main` (téléchargeable dans les artefacts de l'action, conservés 90 jours), ou manuellement depuis l'onglet **Actions** → **Run workflow**.
+
+Pour publier une version téléchargeable durablement, pousser un tag `vX.Y.Z` :
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Une [Release GitHub](https://github.com/KWaren/app-bijoux/releases) est alors créée automatiquement avec l'APK signé en pièce jointe.
 
 Pour générer un APK en local, après l'étape `flutter create` ci-dessus :
 

@@ -3,6 +3,7 @@ name: Build APK
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -31,6 +32,8 @@ jobs:
     needs: analyze
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -169,3 +172,17 @@ jobs:
           name: stock-flow-apk
           path: scaffold/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 90
+
+      - name: Rename APK for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cp scaffold/build/app/outputs/flutter-apk/app-release.apk \
+            scaffold/build/app/outputs/flutter-apk/stock-flow-${{ github.ref_name }}.apk
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Stock Flow ${{ github.ref_name }}
+          generate_release_notes: true
+          files: scaffold/build/app/outputs/flutter-apk/stock-flow-${{ github.ref_name }}.apk
