@@ -9,6 +9,9 @@ class AppTheme {
   static const Color rougeAlerte = Color(0xFFC0392B);
   static const Color vertSucces = Color(0xFF2E7D32);
   static const Color orangeAlerte = Color(0xFFE65100);
+  /// Texte secondaire (dates, sous-titres) et icônes discrètes du mockup.
+  static const Color grisTexte = Color(0xFF6B7280);
+  static const Color grisIcone = Color(0xFFA8AEB8);
 
   // Fonds/textes des badges (stock bas, épuisé, vente à crédit, bénéfice).
   static const Color stockBasBg = Color(0xFFFFE0B2);
@@ -57,7 +60,11 @@ class AppTheme {
         elevation: 2,
         shadowColor: bleuMarineFonce.withValues(alpha: 0.18),
         surfaceTintColor: Colors.white,
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        // Marge verticale seulement : la marge horizontale s'ajouterait au
+        // padding de l'écran et décalerait les cartes par rapport aux boutons
+        // et titres de section voisins. Les listes plein écran donnent leur
+        // propre padding horizontal.
+        margin: const EdgeInsets.symmetric(vertical: 6),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusSection)),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(

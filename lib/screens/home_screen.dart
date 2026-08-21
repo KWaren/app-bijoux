@@ -268,6 +268,9 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      // L'espacement entre cartes est géré par la grille (_ResumeCards) :
+      // laisser la marge du thème ici l'ajouterait des deux côtés.
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -310,11 +313,26 @@ class _TopModeles extends StatelessWidget {
         children: topModeles.asMap().entries.map((entry) {
           final rang = entry.key + 1;
           final m = entry.value;
+          final premier = rang == 1;
           return ListTile(
-            leading: CircleAvatar(child: Text('$rang')),
-            title: Text(m.modele),
+            leading: CircleAvatar(
+              radius: 14,
+              backgroundColor: premier ? AppTheme.bleuMarine : AppTheme.grisMoyen,
+              child: Text(
+                '$rang',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: premier ? Colors.white : AppTheme.anthracite,
+                ),
+              ),
+            ),
+            title: Text(m.modele, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             subtitle: Text('${m.qteVendue} vendu(s)'),
-            trailing: Text(formatMontant(m.totalVentes), style: const TextStyle(fontWeight: FontWeight.bold)),
+            trailing: Text(
+              formatMontant(m.totalVentes),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.bleuMarine),
+            ),
           );
         }).toList(),
       ),

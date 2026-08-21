@@ -471,10 +471,11 @@ class _Ligne extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: style),
-          Text(valeur, style: style),
+          Expanded(child: Text(label, style: style)),
+          const SizedBox(width: 8),
+          Text(valeur, style: style, textAlign: TextAlign.right),
         ],
       ),
     );

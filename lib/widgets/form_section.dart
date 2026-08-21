@@ -41,6 +41,75 @@ class FormSection extends StatelessWidget {
   }
 }
 
+/// Tuile de saisie non textuelle (date...) : même fond gris que les
+/// `TextFormField` remplis qui l'entourent, pour qu'elle ne flotte pas sur le
+/// blanc de la section au milieu des autres champs.
+class ChampTuile extends StatelessWidget {
+  final IconData icone;
+  final String label;
+  final String valeur;
+  final VoidCallback onTap;
+
+  const ChampTuile({
+    super.key,
+    required this.icone,
+    required this.label,
+    required this.valeur,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppTheme.grisClair,
+        borderRadius: BorderRadius.circular(AppTheme.radiusChamp),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusChamp),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppTheme.bleuMarine.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(icone, size: 16, color: AppTheme.bleuMarine),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(valeur, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, size: 18, color: Color(0xFFA8AEB8)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Bloc mis en avant (fond vert) pour une valeur calculée importante, comme
 /// le bénéfice minimum garanti estimé dans le formulaire d'arrivage.
 class HighlightBox extends StatelessWidget {

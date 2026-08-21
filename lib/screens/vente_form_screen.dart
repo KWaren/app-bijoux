@@ -360,16 +360,14 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Date de la vente'),
-                  subtitle: Text(formatDateAffichage(
+                ChampTuile(
+                  icone: Icons.calendar_month_outlined,
+                  label: 'Date de la vente',
+                  valeur: formatDateAffichage(
                     '${_dateVente.year.toString().padLeft(4, '0')}-${_dateVente.month.toString().padLeft(2, '0')}-${_dateVente.day.toString().padLeft(2, '0')}',
-                  )),
-                  trailing: const Icon(Icons.chevron_right),
+                  ),
                   onTap: _choisirDate,
                 ),
-                const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
                   initialValue: _modePaiement,
                   decoration: const InputDecoration(labelText: 'Mode de paiement'),
@@ -406,12 +404,14 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
                     value: _venteACredit,
                     onChanged: (v) => setState(() => _venteACredit = v),
                   ),
-                  if (_venteACredit)
+                  if (_venteACredit) ...[
+                    const SizedBox(height: 4),
                     TextFormField(
                       controller: _montantPayeCtrl,
                       decoration: InputDecoration(labelText: 'Montant payé maintenant ($devise)'),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
+                  ],
                 ],
               ],
             ),
@@ -472,7 +472,7 @@ class _LigneVenteWidget extends StatelessWidget {
             ),
             if (ligne.arrivage != null)
               Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                padding: const EdgeInsets.only(top: 8, bottom: 8),
                 child: Row(
                   children: [
                     ModelePhoto(photoPath: ligne.arrivage!.photoPath, taille: 36),
@@ -480,7 +480,9 @@ class _LigneVenteWidget extends StatelessWidget {
                     Text('Restant : ${ligne.arrivage!.qteRestante}'),
                   ],
                 ),
-              ),
+              )
+            else
+              const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(

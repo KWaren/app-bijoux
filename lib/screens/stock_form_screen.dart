@@ -331,16 +331,14 @@ class _StockFormScreenState extends State<StockFormScreen> {
             FormSection(
               titre: 'Arrivage',
               children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text("Date d'arrivage"),
-                  subtitle: Text(formatDateAffichage(
+                ChampTuile(
+                  icone: Icons.calendar_month_outlined,
+                  label: "Date d'arrivage",
+                  valeur: formatDateAffichage(
                     '${_dateAjout.year.toString().padLeft(4, '0')}-${_dateAjout.month.toString().padLeft(2, '0')}-${_dateAjout.day.toString().padLeft(2, '0')}',
-                  )),
-                  trailing: const Icon(Icons.chevron_right),
+                  ),
                   onTap: _choisirDate,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
                   controller: _quantiteCtrl,
                   decoration: const InputDecoration(labelText: 'Quantité achetée'),
