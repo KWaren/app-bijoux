@@ -406,12 +406,14 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
                     value: _venteACredit,
                     onChanged: (v) => setState(() => _venteACredit = v),
                   ),
-                  if (_venteACredit)
+                  if (_venteACredit) ...[
+                    const SizedBox(height: 4),
                     TextFormField(
                       controller: _montantPayeCtrl,
                       decoration: InputDecoration(labelText: 'Montant payé maintenant ($devise)'),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
+                  ],
                 ],
               ],
             ),
@@ -472,7 +474,7 @@ class _LigneVenteWidget extends StatelessWidget {
             ),
             if (ligne.arrivage != null)
               Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                padding: const EdgeInsets.only(top: 8, bottom: 8),
                 child: Row(
                   children: [
                     ModelePhoto(photoPath: ligne.arrivage!.photoPath, taille: 36),
@@ -480,7 +482,9 @@ class _LigneVenteWidget extends StatelessWidget {
                     Text('Restant : ${ligne.arrivage!.qteRestante}'),
                   ],
                 ),
-              ),
+              )
+            else
+              const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
