@@ -360,16 +360,14 @@ class _VenteFormScreenState extends State<VenteFormScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Date de la vente'),
-                  subtitle: Text(formatDateAffichage(
+                ChampTuile(
+                  icone: Icons.calendar_month_outlined,
+                  label: 'Date de la vente',
+                  valeur: formatDateAffichage(
                     '${_dateVente.year.toString().padLeft(4, '0')}-${_dateVente.month.toString().padLeft(2, '0')}-${_dateVente.day.toString().padLeft(2, '0')}',
-                  )),
-                  trailing: const Icon(Icons.chevron_right),
+                  ),
                   onTap: _choisirDate,
                 ),
-                const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
                   initialValue: _modePaiement,
                   decoration: const InputDecoration(labelText: 'Mode de paiement'),

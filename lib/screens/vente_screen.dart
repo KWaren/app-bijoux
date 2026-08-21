@@ -103,68 +103,20 @@ class _VenteScreenState extends State<VenteScreen> {
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 90),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
                   itemCount: ventes.length,
                   itemBuilder: (context, index) {
                     final v = ventes[index];
                     final aDette = v.resteAPayer != null && v.resteAPayer! > 0;
                     final unSeulModele = v.lignes.length == 1;
                     final titreModele = unSeulModele ? (v.lignes.first.modeleNom ?? '') : '${v.lignes.length} modèles';
+                    // Mise en page du mockup : la corbeille est alignée sur le
+                    // titre et le montant occupe sa propre ligne. Un ListTile
+                    // mettait les deux dans `trailing`, ce qui rognait la
+                    // largeur du titre et le faisait passer à la ligne.
                     return Card(
-                      child: ListTile(
-                        leading: ModelePhoto(photoPath: v.lignes.isEmpty ? null : v.lignes.first.photoPath, taille: 48),
-                        title: Text('$titreModele — ${v.clientNom}'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!unSeulModele) Text(v.modelesResume),
-                            Text('${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendueTotal}'),
-                            if (aDette)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(4),
-                                  onTap: () => _payerDette(v),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.creditBg,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'À crédit · reste ${formatMontant(v.resteAPayer!)}',
-                                          style: const TextStyle(
-                                            color: AppTheme.creditFg,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.payments_outlined, size: 14, color: AppTheme.creditFg),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        isThreeLine: aDette || !unSeulModele,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              formatMontant(v.prixVenteTotal),
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.bleuMarine),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 20),
-                              onPressed: () => _supprimer(v),
-                            ),
-                          ],
-                        ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
                         onTap: () async {
                           final modifie = await Navigator.push<bool>(
                             context,
@@ -172,6 +124,106 @@ class _VenteScreenState extends State<VenteScreen> {
                           );
                           if (modifie == true) _recharger();
                         },
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ModelePhoto(
+                                photoPath: v.lignes.isEmpty ? null : v.lignes.first.photoPath,
+                                taille: 48,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            '$titreModele — ${v.clientNom}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        InkWell(
+                                          borderRadius: BorderRadius.circular(6),
+                                          onTap: () => _supprimer(v),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(2),
+                                            child: Icon(Icons.delete_outline, size: 18, color: AppTheme.grisIcone),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (!unSeulModele)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          v.modelesResume,
+                                          style: const TextStyle(fontSize: 11, color: AppTheme.grisTexte),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            '${formatDateAffichage(v.dateVente)} · Qté ${v.qteVendueTotal}',
+                                            style: const TextStyle(fontSize: 11, color: AppTheme.grisTexte),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          formatMontant(v.prixVenteTotal),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
+                                            color: AppTheme.bleuMarine,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (aDette)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(6),
+                                          onTap: () => _payerDette(v),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.creditBg,
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    'À crédit · reste ${formatMontant(v.resteAPayer!)}',
+                                                    style: const TextStyle(
+                                                      color: AppTheme.creditFg,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                const Icon(Icons.payments_outlined, size: 13, color: AppTheme.creditFg),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },

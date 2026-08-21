@@ -186,7 +186,7 @@ class _DepensesScreenState extends State<DepensesScreen> {
                     ),
                     Expanded(
                       child: ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 90),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
                         itemCount: depenses.length,
                         itemBuilder: (context, index) {
                           final d = depenses[index];
@@ -205,9 +205,17 @@ class _DepensesScreenState extends State<DepensesScreen> {
                                     formatMontant(d.cout),
                                     style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.rougeAlerte),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, size: 20),
-                                    onPressed: () => _supprimer(d),
+                                  const SizedBox(width: 4),
+                                  // Bouton compact : l'IconButton standard
+                                  // (48px de zone tactile + marges) rognait la
+                                  // largeur du libellé de la dépense.
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(6),
+                                    onTap: () => _supprimer(d),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: Icon(Icons.delete_outline, size: 18, color: AppTheme.grisIcone),
+                                    ),
                                   ),
                                 ],
                               ),

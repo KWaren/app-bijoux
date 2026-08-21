@@ -93,7 +93,7 @@ class _StockScreenState extends State<StockScreen> {
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 90),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
                   itemCount: arrivages.length,
                   itemBuilder: (context, index) =>
                       _ArrivageTile(arrivage: arrivages[index], onModifie: _recharger),
@@ -127,52 +127,18 @@ class _ArrivageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const styleSub = TextStyle(fontSize: 12, color: Color(0xFF3F4550));
+    // Le badge est placé sur la ligne du nom (mise en page du mockup) : en
+    // `trailing` d'un ListTile il se retrouvait centré au milieu d'une carte
+    // haute de 4 à 6 lignes, et amputait la largeur de tout le sous-titre.
+    final badge = arrivage.stockEpuise
+        ? const _BadgeStock(texte: 'Épuisé', fond: AppTheme.epuiseBg, encre: AppTheme.epuiseFg)
+        : (arrivage.stockBas
+            ? const _BadgeStock(texte: 'Stock bas', fond: AppTheme.stockBasBg, encre: AppTheme.stockBasFg)
+            : null);
     return Card(
-      child: ListTile(
-        leading: ModelePhoto(photoPath: arrivage.photoPath, taille: 52),
-        title: Text(arrivage.modele, style: const TextStyle(fontWeight: FontWeight.bold)),
-        isThreeLine: true,
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Restant : ${arrivage.qteRestante} / ${arrivage.quantite}'),
-            if (arrivage.qteEndommage > 0) Text('Endommagé : ${arrivage.qteEndommage}'),
-            Wrap(
-              children: [
-                const Text('Prix achat unit. : '),
-                PrixAchatText(valeur: arrivage.prixAchatUnitaire),
-              ],
-            ),
-            if (arrivage.depensesLiees > 0)
-              Wrap(
-                children: [
-                  const Text('Frais liés (transport, douane...) : '),
-                  PrixAchatText(valeur: arrivage.depensesLiees),
-                ],
-              ),
-            if (arrivage.prixVenteMax != null) Text('Prix vente max : ${formatMontant(arrivage.prixVenteMax!)}'),
-            if (arrivage.beneficeEstime != null)
-              Wrap(
-                children: [
-                  const Text('Bénéfice min. estimé sur le restant : '),
-                  PrixAchatText(valeur: arrivage.beneficeEstime!),
-                ],
-              ),
-          ],
-        ),
-        trailing: arrivage.stockEpuise
-            ? Chip(
-                label: const Text('Épuisé'),
-                backgroundColor: AppTheme.epuiseBg,
-                labelStyle: const TextStyle(color: AppTheme.epuiseFg),
-              )
-            : (arrivage.stockBas
-                ? Chip(
-                    label: const Text('Stock bas'),
-                    backgroundColor: AppTheme.stockBasBg,
-                    labelStyle: const TextStyle(color: AppTheme.stockBasFg),
-                  )
-                : null),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: () async {
           final modifie = await Navigator.push<bool>(
             context,
@@ -180,6 +146,84 @@ class _ArrivageTile extends StatelessWidget {
           );
           if (modifie == true) onModifie();
         },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ModelePhoto(photoPath: arrivage.photoPath, taille: 52),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            arrivage.modele,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                        if (badge != null) ...[const SizedBox(width: 8), badge],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Restant : ${arrivage.qteRestante} / ${arrivage.quantite}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    if (arrivage.qteEndommage > 0)
+                      Text('Endommagé : ${arrivage.qteEndommage}', style: styleSub),
+                    Wrap(
+                      children: [
+                        const Text('Prix achat unit. : ', style: styleSub),
+                        PrixAchatText(valeur: arrivage.prixAchatUnitaire, style: styleSub),
+                      ],
+                    ),
+                    if (arrivage.depensesLiees > 0)
+                      Wrap(
+                        children: [
+                          const Text('Frais liés (transport, douane...) : ', style: styleSub),
+                          PrixAchatText(valeur: arrivage.depensesLiees, style: styleSub),
+                        ],
+                      ),
+                    if (arrivage.prixVenteMax != null)
+                      Text('Prix vente max : ${formatMontant(arrivage.prixVenteMax!)}', style: styleSub),
+                    if (arrivage.beneficeEstime != null)
+                      Wrap(
+                        children: [
+                          const Text('Bénéfice min. estimé sur le restant : ', style: styleSub),
+                          PrixAchatText(valeur: arrivage.beneficeEstime!, style: styleSub),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgeStock extends StatelessWidget {
+  final String texte;
+  final Color fond;
+  final Color encre;
+
+  const _BadgeStock({required this.texte, required this.fond, required this.encre});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(color: fond, borderRadius: BorderRadius.circular(100)),
+      child: Text(
+        texte,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: encre),
       ),
     );
   }

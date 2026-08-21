@@ -14,66 +14,75 @@ class MonthSelector extends StatelessWidget {
     final moisListe = appState.moisDisponibles;
     final valeurActuelle = moisListe.contains(appState.moisSelectionne) ? appState.moisSelectionne : null;
 
-    return Row(
-      children: [
-        Expanded(
-          child: PopupMenuButton<String>(
-            tooltip: 'Choisir le mois',
-            offset: const Offset(0, 46),
-            itemBuilder: (context) => moisListe
-                .map((m) => PopupMenuItem(value: m, child: Text(formatMoisLibelle(m))))
-                .toList(),
-            onSelected: (valeur) => context.read<AppState>().changerMois(valeur),
+    // IntrinsicHeight + stretch : le bouton calendrier prend exactement la
+    // hauteur de la pastille du mois, au lieu d'une hauteur fixe qui la
+    // laissait dépasser au-dessus et en dessous.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: PopupMenuButton<String>(
+              tooltip: 'Choisir le mois',
+              offset: const Offset(0, 46),
+              itemBuilder: (context) => moisListe
+                  .map((m) => PopupMenuItem(value: m, child: Text(formatMoisLibelle(m))))
+                  .toList(),
+              onSelected: (valeur) => context.read<AppState>().changerMois(valeur),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: AppTheme.ombreDouce,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'MOIS',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          Text(
+                            valeurActuelle != null ? formatMoisLibelle(valeurActuelle) : 'Choisir',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.expand_more, color: AppTheme.bleuMarine),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _choisirAutreMois(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              width: 42,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: AppTheme.ombreDouce,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MOIS',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      Text(
-                        valeurActuelle != null ? formatMoisLibelle(valeurActuelle) : 'Choisir',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const Icon(Icons.expand_more, color: AppTheme.bleuMarine),
-                ],
-              ),
+              child: const Icon(Icons.calendar_month_outlined, color: AppTheme.bleuMarine, size: 20),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => _choisirAutreMois(context),
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: AppTheme.ombreDouce,
-            ),
-            child: const Icon(Icons.calendar_month_outlined, color: AppTheme.bleuMarine, size: 20),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
